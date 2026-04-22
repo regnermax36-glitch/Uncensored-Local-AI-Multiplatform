@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -17,6 +20,14 @@ class ChatController extends GetxController {
   final temperature = 0.7.obs;
   final systemPrompt = ''.obs;
 
+  // Speech and TTS
+  final SpeechToText _speechToText = SpeechToText();
+  final FlutterTts _flutterTts = FlutterTts();
+  final isListening = false.obs;
+  final isTtsEnabled = true.obs;
+  final speechEnabled = false.obs;
+  final lastWords = ''.obs;
+
   StreamSubscription<String>? _genSub;
 
   @override
@@ -25,6 +36,58 @@ class ChatController extends GetxController {
     _loadChats();
     temperature.value = _storage.defaultTemperature;
     systemPrompt.value = _storage.globalSystemPrompt;
+    _initSpeech();
+    _initTts();
+  }
+
+  void _initSpeech() async {
+    try {
+      speechEnabled.value = await _speechToText.initialize();
+    } catch (e) {
+      print('STT Init Error: $e');
+    }
+  }
+
+  void _initTts() {
+    _flutterTts.setLanguage("en-US");
+    _flutterTts.setSpeechRate(0.5);
+    _flutterTts.setVolume(1.0);
+    _flutterTts.setPitch(1.0);
+  }
+
+  void toggleTts() {
+    isTtsEnabled.value = !isTtsEnabled.value;
+    if (!isTtsEnabled.value) {
+      _flutterTts.stop();
+    }
+  }
+
+  Future<void> startListening() async {
+    if (!speechEnabled.value) {
+      final status = await Permission.microphone.request();
+      if (status.isGranted) {
+        speechEnabled.value = await _speechToText.initialize();
+      } else {
+        return;
+      }
+    }
+
+    if (speechEnabled.value && !isListening.value) {
+      isListening.value = true;
+      await _speechToText.listen(
+        onResult: (result) {
+          lastWords.value = result.recognizedWords;
+          if (result.finalResult) {
+            isListening.value = false;
+          }
+        },
+      );
+    }
+  }
+
+  Future<void> stopListening() async {
+    await _speechToText.stop();
+    isListening.value = false;
   }
 
   void _loadChats() {
@@ -118,6 +181,7 @@ class ChatController extends GetxController {
         // Throttle UI refreshes
         chats.refresh();
       }
+
     } catch (e) {
       if (aiMsg.content.isEmpty) {
         aiMsg.content = '⚠ Error: ${e.toString()}';
@@ -136,6 +200,10 @@ class ChatController extends GetxController {
       chat.updatedAt = DateTime.now();
       _storage.saveChat(chat);
       chats.refresh();
+
+      if (isTtsEnabled.value && aiMsg.content.isNotEmpty) {
+        _flutterTts.speak(aiMsg.content);
+      }
     }
   }
 

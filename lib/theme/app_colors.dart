@@ -55,6 +55,12 @@ class AppColors {
   static const lightTextM     = Color(0xFF475569);
   static const lightTextD     = Color(0xFF94A3B8);
 
+  // ── Glassy UI Colors ──────────────────────────────────────────
+  static const glassDark = Color(0x990D1117);
+  static const glassLight = Color(0x99FFFFFF);
+  static const glassBorderDark = Color(0x33FFFFFF);
+  static const glassBorderLight = Color(0x33000000);
+
   // ── Label colours ────────────────────────────────────────────
   static const uncensored = Color(0xFFEF4444);
   static const standard   = Color(0xFF06B6D4);

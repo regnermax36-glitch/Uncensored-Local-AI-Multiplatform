@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -37,14 +38,27 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _mobileScaffoldKey =
       GlobalKey<ScaffoldState>();
 
+  Worker? _speechWorker;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_handleChatScroll);
+
+    // Sync speech to text field
+    _speechWorker = ever(_chatCtrl.lastWords, (String words) {
+      if (words.isNotEmpty && _chatCtrl.isListening.value) {
+        _msgController.text = words;
+        _msgController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _msgController.text.length),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _speechWorker?.dispose();
     _scrollController.removeListener(_handleChatScroll);
     _scrollController.dispose();
     _msgController.dispose();
@@ -80,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _send() {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
+    _chatCtrl.lastWords.value = ''; // clear speech words
 
     if (_chatCtrl.activeChat == null) {
       _chatCtrl.newChat();
@@ -258,14 +273,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMobileTopBar() {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: context.bg,
-        border: Border(bottom: BorderSide(color: context.border, width: 0.5)),
-      ),
-      child: Row(
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: context.isDark ? AppColors.glassDark : AppColors.glassLight,
+            border: Border(
+              bottom: BorderSide(
+                color: context.isDark ? AppColors.glassBorderDark : AppColors.glassBorderLight,
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: Row(
         children: [
           // Sidebar / history button — opens drawer from left
           IconButton(
@@ -343,6 +366,8 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'New Chat',
           ),
         ],
+      ),
+    ),
       ),
     );
   }
@@ -826,22 +851,48 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.bgInput,
-          border: Border.all(color: context.border),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(context.isDark ? 0.15 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.isDark ? AppColors.glassDark : AppColors.glassLight,
+              border: Border.all(
+                color: context.isDark ? AppColors.glassBorderDark : AppColors.glassBorderLight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(context.isDark ? 0.15 : 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
+            child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // TTS Toggle
+            Padding(
+              padding: const EdgeInsets.only(left: 8, bottom: 6),
+              child: Obx(
+                () => IconButton(
+                  icon: Icon(
+                    _chatCtrl.isTtsEnabled.value
+                        ? Icons.volume_up_rounded
+                        : Icons.volume_off_rounded,
+                    size: 20,
+                    color: _chatCtrl.isTtsEnabled.value
+                        ? AppColors.accent
+                        : context.textD,
+                  ),
+                  onPressed: _chatCtrl.toggleTts,
+                  tooltip: 'Text-to-Speech',
+                ),
+              ),
+            ),
+
             // Text field
             Expanded(
               child: TextField(
@@ -866,6 +917,28 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // Microphone
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Obx(
+                () => IconButton(
+                  icon: Icon(
+                    _chatCtrl.isListening.value
+                        ? Icons.mic_rounded
+                        : Icons.mic_none_rounded,
+                    size: 22,
+                    color: _chatCtrl.isListening.value
+                        ? AppColors.red
+                        : context.textM,
+                  ),
+                  onPressed: _chatCtrl.isListening.value
+                      ? _chatCtrl.stopListening
+                      : _chatCtrl.startListening,
+                  tooltip: 'Voice Input',
+                ),
+              ),
+            ),
+
             // Send / Stop
             Padding(
               padding: const EdgeInsets.only(right: 8, bottom: 6),
@@ -887,6 +960,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    ),
       ),
     );
   }
