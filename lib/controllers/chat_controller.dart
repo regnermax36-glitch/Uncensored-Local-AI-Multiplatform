@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'system_controller.dart';
 
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -12,6 +13,7 @@ import '../services/chat_storage_service.dart';
 class ChatController extends GetxController {
   final LlmService _llm = Get.find<LlmService>();
   final ChatStorageService _storage = Get.find<ChatStorageService>();
+  final SystemController _system = Get.put(SystemController());
 
   final chats = <ChatModel>[].obs;
   final activeChatId = RxnString();
@@ -20,7 +22,6 @@ class ChatController extends GetxController {
   final temperature = 0.7.obs;
   final systemPrompt = ''.obs;
 
-  // Speech and TTS
   final SpeechToText _speechToText = SpeechToText();
   final FlutterTts _flutterTts = FlutterTts();
   final isListening = false.obs;
@@ -43,45 +44,33 @@ class ChatController extends GetxController {
   void _initSpeech() async {
     try {
       speechEnabled.value = await _speechToText.initialize();
-    } catch (e) {
-      print('STT Init Error: $e');
-    }
+    } catch (_) {}
   }
 
   void _initTts() {
     _flutterTts.setLanguage("en-US");
     _flutterTts.setSpeechRate(0.5);
-    _flutterTts.setVolume(1.0);
-    _flutterTts.setPitch(1.0);
   }
 
   void toggleTts() {
     isTtsEnabled.value = !isTtsEnabled.value;
-    if (!isTtsEnabled.value) {
-      _flutterTts.stop();
-    }
+    if (!isTtsEnabled.value) _flutterTts.stop();
   }
 
   Future<void> startListening() async {
     if (!speechEnabled.value) {
-      final status = await Permission.microphone.request();
-      if (status.isGranted) {
+      if (await Permission.microphone.request().isGranted) {
         speechEnabled.value = await _speechToText.initialize();
       } else {
         return;
       }
     }
-
     if (speechEnabled.value && !isListening.value) {
       isListening.value = true;
-      await _speechToText.listen(
-        onResult: (result) {
-          lastWords.value = result.recognizedWords;
-          if (result.finalResult) {
-            isListening.value = false;
-          }
-        },
-      );
+      await _speechToText.listen(onResult: (result) {
+        lastWords.value = result.recognizedWords;
+        if (result.finalResult) isListening.value = false;
+      });
     }
   }
 
@@ -96,14 +85,9 @@ class ChatController extends GetxController {
 
   ChatModel? get activeChat {
     if (activeChatId.value == null) return null;
-    try {
-      return chats.firstWhere((c) => c.id == activeChatId.value);
-    } catch (_) {
-      return null;
-    }
+    return chats.firstWhereOrNull((c) => c.id == activeChatId.value);
   }
 
-  /// Create a new chat and switch to it.
   void newChat() {
     final chat = ChatModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -114,16 +98,12 @@ class ChatController extends GetxController {
     activeChatId.value = chat.id;
   }
 
-  /// Switch to an existing chat.
   void switchChat(String id) {
     activeChatId.value = id;
     final chat = activeChat;
-    if (chat != null) {
-      systemPrompt.value = chat.systemPrompt;
-    }
+    if (chat != null) systemPrompt.value = chat.systemPrompt;
   }
 
-  /// Delete a chat.
   void deleteChat(String id) {
     chats.removeWhere((c) => c.id == id);
     _storage.deleteChat(id);
@@ -132,19 +112,16 @@ class ChatController extends GetxController {
     }
   }
 
-  /// Send a user message and stream AI response.
   Future<void> sendMessage(String text, {String? modelFilename}) async {
     if (text.trim().isEmpty) return;
     final chat = activeChat;
     if (chat == null) return;
 
-    // Add user message
     final userMsg = MessageModel(role: MessageRole.user, content: text.trim());
     chat.messages.add(userMsg);
     chat.autoTitle();
     chat.updatedAt = DateTime.now();
 
-    // Lock model to this chat on first message
     if (chat.modelId.isEmpty && modelFilename != null) {
       chat.modelId = modelFilename;
     }
@@ -152,16 +129,21 @@ class ChatController extends GetxController {
     _storage.saveChat(chat);
     chats.refresh();
 
-    // Build message history for LLM
-    final history = chat.messages
-        .where((m) => !m.isSystem)
-        .map((m) => m.toLlamaMessage())
-        .toList();
+    final systemStatus = await _system.getSystemSummary();
+    final history = chat.messages.where((m) => !m.isSystem).map((m) => m.toLlamaMessage()).toList();
 
-    // Start generation
+    final effectiveSystemPrompt = (chat.systemPrompt.isNotEmpty ? chat.systemPrompt : systemPrompt.value) +
+            "\n\nCurrent System Status: $systemStatus\n"
+            "You are Apple Intelligence. You can control the user's device by including these tags in your response:\n"
+            "- [SYSTEM: VOLUME X] where X is 0 to 100\n"
+            "- [SYSTEM: BRIGHTNESS X] where X is 0 to 100\n"
+            "- [SYSTEM: TORCH 1] (on) or [SYSTEM: TORCH 0] (off)\n"
+            "- [SYSTEM: WIFI 1] to open Wi-Fi settings\n"
+            "- [SYSTEM: BLUETOOTH 1] to open Bluetooth settings\n"
+            "Use them only when requested.";
+
     isGenerating.value = true;
     streamedResponse.value = '';
-
     final aiMsg = MessageModel(role: MessageRole.assistant, content: '');
     chat.messages.add(aiMsg);
     chats.refresh();
@@ -169,51 +151,48 @@ class ChatController extends GetxController {
     try {
       final stream = _llm.generate(
         messages: history,
-        systemPrompt: chat.systemPrompt.isNotEmpty
-            ? chat.systemPrompt
-            : systemPrompt.value,
+        systemPrompt: effectiveSystemPrompt,
         temperature: temperature.value,
       );
 
       await for (final token in stream) {
         streamedResponse.value += token;
         aiMsg.content = streamedResponse.value;
-        // Throttle UI refreshes
         chats.refresh();
       }
-
     } catch (e) {
-      if (aiMsg.content.isEmpty) {
-        aiMsg.content = '⚠ Error: ${e.toString()}';
-      }
+      if (aiMsg.content.isEmpty) aiMsg.content = '⚠ Error: ${e.toString()}';
     } finally {
-      // Clean up any trailing stop tokens or whitespace
-      aiMsg.content = aiMsg.content
-          .replaceAll(RegExp(
-            r'<\|end\|>|<\|eot_id\|>|<\|endoftext\|>|<\|im_end\|>|<\|im_start\|>'
-            r'|<end_of_turn>|<start_of_turn>|<\|assistant\|>|<\|user\|>|<\|system\|>'
-            r'|<\|pad\|>|</s>|<s>|\[INST\]|\[/INST\]|\[end\]'
-          ), '')
-          .trim();
+      aiMsg.content = aiMsg.content.replaceAll(RegExp(r'<\|.*?\|>|<s>|</s>|\[/?INST\]'), '').trim();
       isGenerating.value = false;
       streamedResponse.value = '';
       chat.updatedAt = DateTime.now();
       _storage.saveChat(chat);
       chats.refresh();
-
-      if (isTtsEnabled.value && aiMsg.content.isNotEmpty) {
-        _flutterTts.speak(aiMsg.content);
-      }
+      if (isTtsEnabled.value && aiMsg.content.isNotEmpty) _flutterTts.speak(aiMsg.content);
+      _handleSystemCommands(aiMsg.content);
     }
   }
 
-  /// Stop current generation.
+  void _handleSystemCommands(String content) {
+    final regExp = RegExp(r'\[SYSTEM:\s*(\w+)\s*(\d+)\]', caseSensitive: false);
+    final matches = regExp.allMatches(content);
+    for (final match in matches) {
+      final command = match.group(1)?.toUpperCase();
+      final value = double.tryParse(match.group(2) ?? '0') ?? 0;
+      if (command == 'VOLUME') _system.setVolume(value / 100);
+      else if (command == 'BRIGHTNESS') _system.setBrightness(value / 100);
+      else if (command == 'TORCH') _system.toggleTorch(value > 0);
+      else if (command == 'WIFI') _system.openWifiSettings();
+      else if (command == 'BLUETOOTH') _system.openBluetoothSettings();
+    }
+  }
+
   void stopGeneration() {
     _llm.stopGeneration();
     isGenerating.value = false;
   }
 
-  /// Update the system prompt for the active chat.
   void updateSystemPrompt(String prompt) {
     systemPrompt.value = prompt;
     final chat = activeChat;
@@ -223,13 +202,11 @@ class ChatController extends GetxController {
     }
   }
 
-  /// Set and persist the global system prompt.
   void setGlobalSystemPrompt(String prompt) {
     systemPrompt.value = prompt;
     _storage.globalSystemPrompt = prompt;
   }
 
-  /// Clear global system prompt.
   void clearGlobalSystemPrompt() {
     systemPrompt.value = '';
     _storage.globalSystemPrompt = '';

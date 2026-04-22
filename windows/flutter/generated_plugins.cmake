@@ -3,8 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  battery_plus
   flutter_tts
   permission_handler_windows
+  screen_brightness_windows
   speech_to_text_windows
   url_launcher_windows
 )

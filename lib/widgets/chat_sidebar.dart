@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
-import '../theme/app_colors.dart';
 import '../controllers/chat_controller.dart';
+import '../theme/app_colors.dart';
 
 class ChatSidebar extends StatelessWidget {
   final VoidCallback onNewChat;
-  final ValueChanged<String> onSelectChat;
-  final ValueChanged<String> onDeleteChat;
+  final Function(String) onSelectChat;
+  final Function(String) onDeleteChat;
   final bool showNewChatButton;
 
   const ChatSidebar({
@@ -20,176 +19,49 @@ class ChatSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<ChatController>();
+    final chatCtrl = Get.find<ChatController>();
 
     return Column(
       children: [
-        // New chat button
-        if (showNewChatButton)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onNewChat,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text(
-                  'New Chat',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  foregroundColor: context.text,
-                  elevation: 0,
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: context.border, width: 1),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-        // Chat list
-        Expanded(
-          child: Obx(() {
-            final chats = ctrl.chats;
-            if (chats.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.chat_bubble_outline, size: 36, color: context.textD),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No chats yet',
-                      style: TextStyle(fontSize: 13, color: context.textD),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: chats.length,
-              itemBuilder: (context, index) {
-                final chat = chats[index];
-                final isActive = chat.id == ctrl.activeChatId.value;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Material(
-                    color: isActive ? context.bgHover : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    child: InkWell(
-                      onTap: () => onSelectChat(chat.id),
-                      borderRadius: BorderRadius.circular(8),
-                      hoverColor: context.bgHover,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              size: 15,
-                              color: isActive ? context.text : context.textD,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                chat.title,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                                  color: isActive ? context.text : context.textM,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            // Delete button with confirmation
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: IconButton(
-                                onPressed: () => _confirmDelete(context, chat.id, chat.title),
-                                icon: Icon(Icons.close_rounded, size: 14, color: context.textD),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-
-        // Footer
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: context.borderFaint)),
-          ),
+        Padding(
+          padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              Icon(Icons.save_outlined, size: 14, color: context.textD),
-              const SizedBox(width: 8),
-              Text(
-                'Chats saved locally',
-                style: TextStyle(fontSize: 11, color: context.textD),
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(gradient: AppColors.accentGradient, borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
               ),
+              const SizedBox(width: 12),
+              Text('History', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: context.text)),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  void _confirmDelete(BuildContext context, String chatId, String chatTitle) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.bgPanel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Chat',
-          style: TextStyle(
-            color: context.text,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
-          'Delete "$chatTitle"?\nThis action cannot be undone.',
-          style: TextStyle(color: context.textM, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: context.textD)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              onDeleteChat(chatId);
+        Expanded(
+          child: Obx(() => ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: chatCtrl.chats.length,
+            itemBuilder: (context, index) {
+              final chat = chatCtrl.chats[index];
+              final isSelected = chatCtrl.activeChatId.value == chat.id;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.accent.withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  title: Text(chat.title.isEmpty ? 'New Chat' : chat.title, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.accent : context.text), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(chat.messages.isNotEmpty ? chat.messages.last.content : 'No messages', style: TextStyle(fontSize: 12, color: context.textD), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  onTap: () => onSelectChat(chat.id),
+                  trailing: isSelected ? IconButton(icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red), onPressed: () => onDeleteChat(chat.id)) : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.red,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+          )),
+        ),
+      ],
     );
   }
 }

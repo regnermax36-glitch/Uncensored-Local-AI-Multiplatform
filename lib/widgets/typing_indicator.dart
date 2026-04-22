@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-/// Animated pulsing circle typing indicator shown while AI is generating.
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({super.key});
 
@@ -17,14 +16,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-    
-    _animation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.3, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -40,12 +33,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
       child: FadeTransition(
         opacity: _animation,
         child: Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: context.isDark ? context.text : AppColors.accent,
-            shape: BoxShape.circle,
-          ),
+          width: 12, height: 12,
+          decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
         ),
       ),
     );
