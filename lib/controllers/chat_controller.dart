@@ -217,6 +217,19 @@ class ChatController extends GetxController {
     _storage.defaultTemperature = temp;
   }
 
+  /// Apple Intelligence Writing Tools
+  Future<void> runWritingTool(String text, String tool) async {
+    String prompt = "";
+    switch (tool) {
+      case 'proofread': prompt = "Proofread the following text for grammar and spelling errors, providing a corrected version: "; break;
+      case 'rewrite': prompt = "Rewrite the following text to be more professional and polished: "; break;
+      case 'summarize': prompt = "Provide a concise summary of the following text: "; break;
+      case 'key_points': prompt = "Extract the key points from the following text in a bulleted list: "; break;
+    }
+    if (prompt.isEmpty) return;
+    sendMessage("$prompt\n\n$text");
+  }
+
   @override
   void onClose() {
     _genSub?.cancel();

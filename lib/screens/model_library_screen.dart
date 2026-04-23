@@ -14,15 +14,16 @@ class ModelLibraryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (embedded) return _ModelLibraryBody(showBackButton: false);
+    final body = _ModelLibraryBody(showBackButton: !embedded);
+    if (embedded) return body;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _ModelLibraryBody(showBackButton: true),
+      body: body,
     );
   }
 }
 
-enum _Filter { all, downloaded, uncensored, custom }
+enum _Filter { all, local, uncensored, custom }
 
 class _ModelLibraryBody extends StatefulWidget {
   final bool showBackButton;
@@ -42,15 +43,17 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
 
     return Column(
       children: [
-        Container(
-          padding: EdgeInsets.only(top: widget.showBackButton ? MediaQuery.of(context).padding.top + 8 : 12, left: 8, right: 8, bottom: 8),
+        Padding(
+          padding: EdgeInsets.only(top: widget.showBackButton ? MediaQuery.of(context).padding.top + 12 : 20, left: 24, right: 24, bottom: 12),
           child: Row(
             children: [
-              if (widget.showBackButton) IconButton(icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.text), onPressed: () => Get.back()),
-              const SizedBox(width: 8),
-              Text('Model Library', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.text)),
+              if (widget.showBackButton) IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), onPressed: () => Get.back()),
+              Text('Intelligence Models', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: context.text)),
               const Spacer(),
-              _ImportButton(ctrl: ctrl),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 28, color: AppColors.accent),
+                onPressed: () => _showImportOptions(context, ctrl),
+              ),
             ],
           ),
         ),
@@ -60,10 +63,9 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              _chip('All', _Filter.all),
-              _chip('Local', _Filter.downloaded),
+              _chip('Catalog', _Filter.all),
+              _chip('On Device', _Filter.local),
               _chip('Uncensored', _Filter.uncensored),
-              _chip('Custom', _Filter.custom),
             ],
           ),
         ),
@@ -76,19 +78,13 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
 
             List<AiModelInfo> filtered;
             switch (_filter) {
-              case _Filter.downloaded: filtered = allCatalog.where((m) => downloaded.contains(m.filename)).toList(); break;
+              case _Filter.local: filtered = allCatalog.where((m) => downloaded.contains(m.filename)).toList(); break;
               case _Filter.uncensored: filtered = allCatalog.where((m) => m.isUncensored).toList(); break;
-              case _Filter.custom: filtered = allCatalog.where((m) => m.isCustom).toList(); break;
               default: filtered = allCatalog;
             }
 
-            final activeFilename = ctrl.selectedModelFilename.value;
-            if (activeFilename != null) {
-              filtered.sort((a, b) => a.filename == activeFilename ? -1 : (b.filename == activeFilename ? 1 : 0));
-            }
-
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               children: [
                 ...downloaded.where((f) => !allCatalog.any((m) => m.filename == f)).map((f) => _localFileCard(context, ctrl, f)),
                 ...filtered.map((model) => ModelCard(
@@ -107,7 +103,7 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
                   onRemoveCustom: () => ctrl.deleteCustomModel(model),
                   onCancelLoad: () => ctrl.cancelLoadModel(),
                   onUnload: () => ctrl.unloadCurrentModel(),
-                ).animate().fadeIn().slideY(begin: 0.1, end: 0)),
+                ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95))),
               ],
             );
           }),
@@ -119,13 +115,14 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
   Widget _chip(String label, _Filter filter) {
     final selected = _filter == filter;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: 10),
       child: ChoiceChip(
-        label: Text(label, style: TextStyle(color: selected ? Colors.white : context.textM, fontSize: 13, fontWeight: FontWeight.w600)),
+        label: Text(label),
         selected: selected,
-        onSelected: (val) { if (val) setState(() => _filter = filter); },
-        selectedColor: AppColors.accent,
-        backgroundColor: context.isDark ? Colors.white10 : Colors.black12,
+        onSelected: (v) { if (v) setState(() => _filter = filter); },
+        selectedColor: context.isDark ? Colors.white : Colors.black,
+        labelStyle: TextStyle(color: selected ? (context.isDark ? Colors.black : Colors.white) : context.text, fontWeight: FontWeight.w600, fontSize: 13),
+        backgroundColor: context.isDark ? Colors.white12 : Colors.black.withOpacity(0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         side: BorderSide.none,
         showCheckmark: false,
@@ -135,69 +132,50 @@ class _ModelLibraryBodyState extends State<_ModelLibraryBody> {
 
   Widget _localFileCard(BuildContext context, ModelController ctrl, String filename) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: context.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: context.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
-          Icon(Icons.insert_drive_file_rounded, color: context.textM),
+          const Icon(Icons.file_copy_rounded, color: Colors.blue),
           const SizedBox(width: 12),
-          Expanded(child: Text(filename, style: TextStyle(color: context.text, fontSize: 14), overflow: TextOverflow.ellipsis)),
-          TextButton(onPressed: () => ctrl.loadModel(filename), child: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.green))),
+          Expanded(child: Text(filename, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.text), overflow: TextOverflow.ellipsis)),
+          TextButton(onPressed: () => ctrl.loadModel(filename), child: const Text('Initialize', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.accent))),
         ],
       ),
     );
   }
-}
 
-class _ImportButton extends StatelessWidget {
-  final ModelController ctrl;
-  const _ImportButton({required this.ctrl});
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(icon: const Icon(Icons.add_circle_outline_rounded, size: 28, color: AppColors.accent), onPressed: () => _showImportOptions(context));
-  }
-
-  void _showImportOptions(BuildContext context) {
+  void _showImportOptions(BuildContext context, ModelController ctrl) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        decoration: BoxDecoration(color: context.isDark ? const Color(0xFF1C1C1E) : Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(32))),
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(color: context.isDark ? const Color(0xFF1C1C1E) : Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(40))),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(leading: const Icon(Icons.file_present_rounded, color: AppColors.accent), title: const Text('Import .gguf File'), onTap: () { Navigator.pop(context); ctrl.importModelFromFile(); }),
-            ListTile(leading: const Icon(Icons.folder_rounded, color: AppColors.green), title: const Text('Import from Folder'), onTap: () { Navigator.pop(context); ctrl.importFromDirectory(); }),
-            ListTile(leading: const Icon(Icons.link_rounded, color: AppColors.orange), title: const Text('Add from URL'), onTap: () { Navigator.pop(context); _showAddUrlDialog(context); }),
+            Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2.5))),
+            const SizedBox(height: 20),
+            Text('Import Intelligence', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: context.text)),
+            const SizedBox(height: 10),
+            _importTile(Icons.file_open_rounded, Colors.blue, 'Local File', 'Select .gguf model', () { Navigator.pop(context); ctrl.importModelFromFile(); }),
+            _importTile(Icons.folder_copy_rounded, Colors.green, 'Directory Scan', 'Scan for models', () { Navigator.pop(context); ctrl.importFromDirectory(); }),
+            _importTile(Icons.cloud_download_rounded, Colors.orange, 'External URL', 'Add remote GGUF', () { Navigator.pop(context); }),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  void _showAddUrlDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final urlCtrl = TextEditingController();
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: context.isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Add from URL', style: TextStyle(color: context.text)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Model Name')),
-            const SizedBox(height: 12),
-            TextField(controller: urlCtrl, decoration: const InputDecoration(hintText: 'GGUF URL')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () { ctrl.addCustomUrlModel(name: nameCtrl.text, url: urlCtrl.text); Get.back(); }, child: const Text('Add')),
-        ],
-      ),
+  Widget _importTile(IconData icon, Color color, String title, String sub, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(sub, style: const TextStyle(fontSize: 12)),
+      onTap: onTap,
     );
   }
 }

@@ -1,182 +1,133 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_colors.dart';
 import '../models/message_model.dart';
-import '../services/llm_service.dart';
+import '../controllers/chat_controller.dart';
 
 class ChatBubble extends StatelessWidget {
   final MessageModel message;
-  /// If true, this is the last AI message and we show speed info
-  final bool showSpeed;
-
-  const ChatBubble({super.key, required this.message, this.showSpeed = false});
+  const ChatBubble({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    final isSmall = MediaQuery.of(context).size.width < 600;
-    final hPad = isSmall ? 16.0 : 24.0;
-
     return Container(
       width: double.infinity,
-      color: isUser ? Colors.transparent : context.bgMsgAi,
-      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Avatar
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isUser ? context.textM : AppColors.accent,
-              borderRadius: BorderRadius.circular(8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                color: isUser
+                  ? AppColors.accent
+                  : (context.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
+                borderRadius: BorderRadius.circular(24).copyWith(
+                  bottomRight: isUser ? const Radius.circular(4) : null,
+                  bottomLeft: !isUser ? const Radius.circular(4) : null,
+                ),
+                boxShadow: [
+                  if (!isUser) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                ],
+              ),
+              child: _buildContent(context, isUser),
             ),
-            child: Icon(
-              isUser ? Icons.person_rounded : Icons.bolt_rounded,
-              size: 16,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // Content
-          Expanded(
-            child: _buildContent(context, isUser),
-          ),
-        ],
+            if (isUser) ...[
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => _showWritingTools(context, message.content),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: context.isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_fix_high_rounded, size: 14, color: AppColors.accent),
+                      const SizedBox(width: 6),
+                      Text('Writing Tools', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: context.textM)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showWritingTools(BuildContext context, String text) {
+    final chatCtrl = Get.find<ChatController>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: context.isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              const Padding(padding: EdgeInsets.all(20), child: Text('Writing Tools', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+              _toolTile(context, Icons.spellcheck_rounded, Colors.blue, 'Proofread', 'Correct grammar and spelling', () {
+                Navigator.pop(context); chatCtrl.runWritingTool(text, 'proofread');
+              }),
+              _toolTile(context, Icons.auto_fix_normal_rounded, Colors.purple, 'Rewrite', 'Make it more professional', () {
+                Navigator.pop(context); chatCtrl.runWritingTool(text, 'rewrite');
+              }),
+              _toolTile(context, Icons.summarize_rounded, Colors.orange, 'Summarize', 'Provide a concise summary', () {
+                Navigator.pop(context); chatCtrl.runWritingTool(text, 'summarize');
+              }),
+              _toolTile(context, Icons.list_alt_rounded, Colors.green, 'Key Points', 'Extract main takeaways', () {
+                Navigator.pop(context); chatCtrl.runWritingTool(text, 'key_points');
+              }),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _toolTile(BuildContext context, IconData icon, Color color, String title, String sub, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, color: color, size: 22)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(sub, style: TextStyle(fontSize: 12, color: context.textD)),
+      onTap: onTap,
     );
   }
 
   Widget _buildContent(BuildContext context, bool isUser) {
     if (isUser) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 3),
-        child: Text(
-          message.content,
-          style: TextStyle(
-            fontSize: 15,
-            color: context.text,
-            height: 1.6,
-          ),
-        ),
-      );
+      return Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4));
     }
-
-    // AI: render markdown
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 3),
-          child: MarkdownBody(
-            data: message.content,
-            selectable: true,
-            onTapLink: (text, href, title) {
-              if (href != null) {
-                launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
-              }
-            },
-            styleSheet: MarkdownStyleSheet(
-              p: TextStyle(fontSize: 15, color: context.text, height: 1.7),
-              h1: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: context.text),
-              h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: context.text),
-              h3: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: context.text),
-              code: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13,
-                color: const Color(0xFFE6EDF3),
-                backgroundColor: context.isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.black.withOpacity(0.06),
-              ),
-              codeblockDecoration: BoxDecoration(
-                color: const Color(0xFF1E1E2E),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              codeblockPadding: const EdgeInsets.all(14),
-              blockquoteDecoration: BoxDecoration(
-                color: AppColors.accent.withOpacity(0.08),
-                border: const Border(
-                  left: BorderSide(color: AppColors.accent, width: 3),
-                ),
-              ),
-              blockquotePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              listBullet: TextStyle(color: context.text),
-              tableHead: TextStyle(fontWeight: FontWeight.w600, color: context.text, fontSize: 14),
-              tableBody: TextStyle(color: context.text, fontSize: 14),
-              tableBorder: TableBorder.all(color: context.border),
-              tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              horizontalRuleDecoration: BoxDecoration(
-                border: Border(top: BorderSide(color: context.border)),
-              ),
-            ),
-          ),
-        ),
-
-        // Action row: Copy + Speed
-        if (message.content.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              children: [
-                // Copy button
-                InkWell(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: message.content));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Copied to clipboard'),
-                        duration: Duration(seconds: 1),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.copy_rounded, size: 14, color: context.textD),
-                        const SizedBox(width: 4),
-                        Text('Copy', style: TextStyle(fontSize: 12, color: context.textD)),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Speed indicator (on the last AI message)
-                if (showSpeed) ...[
-                  const SizedBox(width: 12),
-                  Obx(() {
-                    final llm = Get.find<LlmService>();
-                    final speed = llm.isGenerating.value
-                        ? llm.tokensPerSecond.value
-                        : llm.lastGenerationSpeed.value;
-                    if (speed <= 0) return const SizedBox.shrink();
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.speed_rounded, size: 14, color: context.textD),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${speed.toStringAsFixed(1)} t/s',
-                          style: TextStyle(fontSize: 12, color: context.textD),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
-              ],
-            ),
-          ),
-      ],
+    return MarkdownBody(
+      data: message.content,
+      selectable: true,
+      onTapLink: (text, href, title) {
+        if (href != null) launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+      },
+      styleSheet: MarkdownStyleSheet(
+        p: TextStyle(color: context.text, fontSize: 16, height: 1.5),
+        code: TextStyle(backgroundColor: context.isDark ? Colors.white10 : Colors.black12, fontFamily: 'monospace', fontSize: 14),
+        codeblockDecoration: BoxDecoration(color: context.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 }

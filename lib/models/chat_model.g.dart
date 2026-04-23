@@ -18,10 +18,10 @@ class ChatModelAdapter extends TypeAdapter<ChatModel> {
     };
     return ChatModel(
       id: fields[0] as String,
-      title: fields[1] as String? ?? 'New Chat',
-      modelId: fields[2] as String? ?? '',
-      systemPrompt: fields[3] as String? ?? '',
-      messages: (fields[4] as List?)?.cast<MessageModel>() ?? [],
+      title: fields[1] as String,
+      modelId: fields[2] as String,
+      systemPrompt: fields[3] as String,
+      messages: (fields[4] as List?)?.cast<MessageModel>(),
       createdAt: fields[5] as DateTime?,
       updatedAt: fields[6] as DateTime?,
     );
