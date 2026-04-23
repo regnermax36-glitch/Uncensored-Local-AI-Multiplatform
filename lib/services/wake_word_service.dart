@@ -12,6 +12,10 @@ class WakeWordService extends GetxService {
   static const _accessKey = "YOUR_ACCESS_KEY_HERE";
 
   Future<void> init() async {
+    if (_accessKey == "YOUR_ACCESS_KEY_HERE") {
+      print("WakeWord error: Picovoice Access Key is missing. Please set it in wake_word_service.dart.");
+      return;
+    }
     try {
       _porcupineManager = await PorcupineManager.fromBuiltInKeywords(
         _accessKey,

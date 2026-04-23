@@ -132,14 +132,20 @@ class ChatController extends GetxController {
     final systemStatus = await _system.getSystemSummary();
     final history = chat.messages.where((m) => !m.isSystem).map((m) => m.toLlamaMessage()).toList();
 
+    final apps = await _system.getLaunchableApps();
+    final appNames = apps.map((a) => a.name).join(", ");
+
     final effectiveSystemPrompt = (chat.systemPrompt.isNotEmpty ? chat.systemPrompt : systemPrompt.value) +
             "\n\nCurrent System Status: $systemStatus\n"
+            "Available Apps: $appNames\n"
             "You are Apple Intelligence. You can control the user's device by including these tags in your response:\n"
             "- [SYSTEM: VOLUME X] where X is 0 to 100\n"
             "- [SYSTEM: BRIGHTNESS X] where X is 0 to 100\n"
             "- [SYSTEM: TORCH 1] (on) or [SYSTEM: TORCH 0] (off)\n"
             "- [SYSTEM: WIFI 1] to open Wi-Fi settings\n"
             "- [SYSTEM: BLUETOOTH 1] to open Bluetooth settings\n"
+            "- [SYSTEM: SETTINGS 1] to open general system settings\n"
+            "- [SYSTEM: OPEN APP_NAME] replace APP_NAME with the exact app name from the list above\n"
             "Use them only when requested.";
 
     isGenerating.value = true;
@@ -175,7 +181,7 @@ class ChatController extends GetxController {
   }
 
   void _handleSystemCommands(String content) {
-    final regExp = RegExp(r'\[SYSTEM:\s*(\w+)\s*(\d+)\]', caseSensitive: false);
+    final regExp = RegExp(r'\[SYSTEM:\s*(\w+)\s*(.*?)\]', caseSensitive: false);
     final matches = regExp.allMatches(content);
     for (final match in matches) {
       final command = match.group(1)?.toUpperCase();
@@ -185,6 +191,8 @@ class ChatController extends GetxController {
       else if (command == 'TORCH') _system.toggleTorch(value > 0);
       else if (command == 'WIFI') _system.openWifiSettings();
       else if (command == 'BLUETOOTH') _system.openBluetoothSettings();
+      else if (command == 'SETTINGS') _system.openMainSettings();
+      else if (command == 'OPEN') _system.launchApp(match.group(2) ?? "");
     }
   }
 

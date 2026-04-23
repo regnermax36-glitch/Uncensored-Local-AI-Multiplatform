@@ -4,6 +4,8 @@ import 'package:screen_brightness/screen_brightness.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:torch_light/torch_light.dart';
 import 'package:app_settings/app_settings.dart';
+import 'package:installed_apps/installed_apps.dart';
+import 'package:installed_apps/app_info.dart';
 
 class SystemController extends GetxController {
   final Battery _battery = Battery();
@@ -74,6 +76,34 @@ class SystemController extends GetxController {
 
   void openBluetoothSettings() {
     AppSettings.openAppSettings(type: AppSettingsType.bluetooth);
+  }
+
+  void openMainSettings() {
+    AppSettings.openAppSettings(type: AppSettingsType.settings);
+  }
+
+  Future<List<AppInfo>> getLaunchableApps() async {
+    return await InstalledApps.getInstalledApps();
+  }
+
+  Future<bool> launchApp(String nameOrPackage) async {
+    // Try by package first
+    try {
+      final success = await InstalledApps.startApp(nameOrPackage);
+      if (success == true) return true;
+    } catch (_) {}
+
+    // Try finding by name
+    final apps = await getLaunchableApps();
+    for (final app in apps) {
+      if (app.name!.toLowerCase() == nameOrPackage.toLowerCase()) {
+        try {
+          final success = await InstalledApps.startApp(app.packageName!);
+          if (success == true) return true;
+        } catch (_) {}
+      }
+    }
+    return false;
   }
 
   Future<String> getSystemSummary() async {

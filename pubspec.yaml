@@ -46,6 +46,7 @@ dependencies:
   app_settings: ^5.1.1
   porcupine_flutter: ^3.0.2
   android_intent_plus: ^5.0.2
+  installed_apps: ^1.1.0
 
 dev_dependencies:
   flutter_test:
