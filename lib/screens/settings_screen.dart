@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:android_intent_plus/android_intent.dart';
 
 import '../theme/app_colors.dart';
 import '../controllers/chat_controller.dart';
@@ -60,6 +61,15 @@ class _SettingsBody extends StatelessWidget {
                     Obx(() => Slider.adaptive(value: chatCtrl.temperature.value, min: 0, max: 2, divisions: 20, activeColor: AppColors.accent, onChanged: (v) => chatCtrl.updateTemperature(v))),
                   ],
                 ),
+              ]),
+              _groupTitle('ASSISTANT'),
+              _group([
+                _tile(context, Icons.assistant_rounded, Colors.blue, 'Default Assistant',
+                  subtitle: 'Set Apple AI as your default system assistant',
+                  onTap: () async {
+                    const intent = AndroidIntent(action: 'android.settings.VOICE_INPUT_SETTINGS');
+                    await intent.launch();
+                  }),
               ]),
               _groupTitle('CONNECTIVITY'),
               _group([

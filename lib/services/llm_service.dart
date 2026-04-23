@@ -55,17 +55,39 @@ class LlmService extends GetxService {
     }
   }
 
+  static final _stopPatterns = RegExp(r'<\|end\|>|<\|eot_id\|>|<\|endoftext\|>|<\|im_end\|>|<\|im_start\|>|<end_of_turn>|<start_of_turn>|<\|assistant\|>|<\|user\|>|<\|system\|>|</s>|<s>|\[INST\]|\[/INST\]|\[end\]');
+
   Stream<String> generate({required List<Map<String, String>> messages, String? systemPrompt, double temperature = 0.7}) async* {
     if (_engine == null) throw StateError('Engine not ready');
     isGenerating.value = true;
     final stopwatch = Stopwatch()..start();
     int count = 0;
+    String buffer = "";
+
     final prompt = _buildPrompt(messages, systemPrompt);
     await for (final token in _engine!.generate(prompt)) {
       count++;
       tokensPerSecond.value = count / (stopwatch.elapsedMilliseconds / 1000);
-      yield token;
+
+      buffer += token;
+      if (_stopPatterns.hasMatch(buffer)) {
+        final cleaned = buffer.replaceAll(_stopPatterns, '').trim();
+        if (cleaned.isNotEmpty) yield cleaned;
+        break;
+      }
+
+      if (buffer.length > 40) {
+        final safe = buffer.substring(0, buffer.length - 30);
+        buffer = buffer.substring(buffer.length - 30);
+        yield safe;
+      }
     }
+
+    if (buffer.isNotEmpty) {
+      final cleaned = buffer.replaceAll(_stopPatterns, '').trim();
+      if (cleaned.isNotEmpty) yield cleaned;
+    }
+
     lastGenerationSpeed.value = tokensPerSecond.value;
     isGenerating.value = false;
   }

@@ -8,6 +8,8 @@ import '../controllers/model_controller.dart';
 import '../controllers/system_controller.dart';
 import '../controllers/theme_controller.dart';
 import '../services/llm_service.dart';
+import '../services/wake_word_service.dart';
+import '../widgets/apple_intelligence_overlay.dart';
 import '../widgets/fluid_glow_painter.dart';
 import '../widgets/chat_sidebar.dart';
 import '../widgets/chat_bubble.dart';
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _llm = Get.find<LlmService>();
   final _themeCtrl = Get.find<ThemeController>();
   final _system = Get.find<SystemController>();
+  final _wakeWord = Get.find<WakeWordService>();
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
   bool _sidebarOpen = true;
@@ -37,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _mobileTabIndex = 0;
   final GlobalKey<ScaffoldState> _mobileScaffoldKey = GlobalKey<ScaffoldState>();
   Worker? _speechWorker;
+  final _showOverlay = false.obs;
 
   @override
   void initState() {
@@ -48,6 +52,17 @@ class _HomeScreenState extends State<HomeScreen> {
         _msgController.selection = TextSelection.fromPosition(TextPosition(offset: _msgController.text.length));
       }
     });
+
+    _initWakeWord();
+  }
+
+  void _initWakeWord() async {
+    await _wakeWord.init();
+    _wakeWord.onWakeWordDetected.listen((_) {
+      _showOverlay.value = true;
+      _chatCtrl.startListening();
+    });
+    _wakeWord.start();
   }
 
   @override
@@ -87,17 +102,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
-    return Obx(() => FluidGlowPainter(
-      isVisible: _chatCtrl.isListening.value || _chatCtrl.isGenerating.value,
-      child: Scaffold(
+    return Obx(() => Stack(
+      children: [
+        FluidGlowPainter(
+          isVisible: _chatCtrl.isListening.value || _chatCtrl.isGenerating.value,
+          child: Scaffold(
         key: _mobileScaffoldKey,
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         extendBody: true,
         drawer: _buildDrawer(),
         body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-        bottomNavigationBar: isDesktop ? null : _buildMobileNav(),
-      ),
+            bottomNavigationBar: isDesktop ? null : _buildMobileNav(),
+          ),
+        ),
+        AppleIntelligenceOverlay(
+          isVisible: _showOverlay.value,
+          onDismiss: () {
+            _showOverlay.value = false;
+            _chatCtrl.stopListening();
+          },
+        ),
+      ],
     ));
   }
 

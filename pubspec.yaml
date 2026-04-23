@@ -44,6 +44,8 @@ dependencies:
   device_info_plus: ^11.3.0
   torch_light: ^1.1.0
   app_settings: ^5.1.1
+  porcupine_flutter: ^3.0.2
+  android_intent_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

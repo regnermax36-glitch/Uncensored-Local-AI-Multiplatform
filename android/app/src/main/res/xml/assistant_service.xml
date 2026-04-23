@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.portableai.portable_ai_flutter.AssistantSessionService"
+    android:recognitionService="com.portableai.portable_ai_flutter.AssistantRecognitionService"
+    android:settingsActivity="com.portableai.portable_ai_flutter.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLocalInteraction="true" />
