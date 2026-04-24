@@ -5,7 +5,6 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:torch_light/torch_light.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:installed_apps/installed_apps.dart';
-import 'package:installed_apps/app_info.dart';
 
 class SystemController extends GetxController {
   final Battery _battery = Battery();
@@ -82,25 +81,30 @@ class SystemController extends GetxController {
     AppSettings.openAppSettings(type: AppSettingsType.settings);
   }
 
-  Future<List<AppInfo>> getLaunchableApps() async {
-    return await InstalledApps.getInstalledApps();
+  void openBatterySettings() {
+    AppSettings.openAppSettings(type: AppSettingsType.batteryOptimization);
+  }
+
+  void openDisplaySettings() {
+    AppSettings.openAppSettings(type: AppSettingsType.display);
+  }
+
+  Future<List<Map<String, String>>> getLaunchableApps() async {
+    final apps = await InstalledApps.getInstalledApps();
+    return apps.map((a) => {'name': a.name ?? '', 'package': a.packageName ?? ''}).toList();
   }
 
   Future<bool> launchApp(String nameOrPackage) async {
-    // Try by package first
     try {
       final success = await InstalledApps.startApp(nameOrPackage);
       if (success == true) return true;
     } catch (_) {}
 
-    // Try finding by name
-    final apps = await getLaunchableApps();
+    final apps = await InstalledApps.getInstalledApps();
     for (final app in apps) {
-      if (app.name!.toLowerCase() == nameOrPackage.toLowerCase()) {
-        try {
-          final success = await InstalledApps.startApp(app.packageName!);
-          if (success == true) return true;
-        } catch (_) {}
+      if ((app.name ?? '').toLowerCase() == nameOrPackage.toLowerCase()) {
+        final success = await InstalledApps.startApp(app.packageName ?? '');
+        return success == true;
       }
     }
     return false;

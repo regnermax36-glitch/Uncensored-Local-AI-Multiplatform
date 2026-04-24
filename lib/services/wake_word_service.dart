@@ -1,42 +1,41 @@
+import 'dart:async';
 import 'package:get/get.dart';
-import 'package:porcupine_flutter/porcupine.dart';
-import 'package:porcupine_flutter/porcupine_manager.dart';
-import 'package:porcupine_flutter/porcupine_error.dart';
+import 'package:manual_speech_to_text/manual_speech_to_text.dart';
+import '../controllers/chat_controller.dart';
 
 class WakeWordService extends GetxService {
-  PorcupineManager? _porcupineManager;
+  late ManualSttController _sttController;
   final isListening = false.obs;
   final onWakeWordDetected = Rxn<void>();
 
-  // You need an access key from Picovoice Console
-  static const _accessKey = "YOUR_ACCESS_KEY_HERE";
-
   Future<void> init() async {
-    if (_accessKey == "YOUR_ACCESS_KEY_HERE") {
-      print("WakeWord error: Picovoice Access Key is missing. Please set it in wake_word_service.dart.");
-      return;
-    }
-    try {
-      _porcupineManager = await PorcupineManager.fromBuiltInKeywords(
-        _accessKey,
-        [BuiltInKeyword.COMPUTER],
-        _wakeWordCallback
-      );
-    } on PorcupineException catch (e) {
-      print("WakeWord init error: ${e.message}");
-    }
-  }
-
-  void _wakeWordCallback(int keywordIndex) {
-    if (keywordIndex == 0) {
-      onWakeWordDetected.trigger(null);
-    }
+    _sttController = ManualSttController(Get.context!);
+    _sttController.listen(
+      onListeningTextChanged: (text) {
+        final lowerText = text.toLowerCase();
+        if (lowerText.contains("computer") || lowerText.contains("hey siri")) {
+          onWakeWordDetected.trigger(null);
+          // Pause briefly after detection to prevent double triggers
+          stop();
+          Future.delayed(const Duration(seconds: 2), () => start());
+        }
+      },
+      onListeningStateChanged: (state) {
+        if (state == ManualSttState.listening) {
+          isListening.value = true;
+        } else {
+          isListening.value = false;
+        }
+      },
+    );
   }
 
   Future<void> start() async {
+    final chatCtrl = Get.find<ChatController>();
+    if (chatCtrl.isListening.value) return;
+
     try {
-      await _porcupineManager?.start();
-      isListening.value = true;
+      _sttController.startStt();
     } catch (e) {
       print("WakeWord start error: $e");
     }
@@ -44,8 +43,7 @@ class WakeWordService extends GetxService {
 
   Future<void> stop() async {
     try {
-      await _porcupineManager?.stop();
-      isListening.value = false;
+      _sttController.stopStt();
     } catch (e) {
       print("WakeWord stop error: $e");
     }
@@ -53,7 +51,7 @@ class WakeWordService extends GetxService {
 
   @override
   void onClose() {
-    _porcupineManager?.delete();
+    stop();
     super.onClose();
   }
 }
