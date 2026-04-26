@@ -9,6 +9,7 @@ import 'theme/app_theme.dart';
 import 'bindings/app_bindings.dart';
 import 'controllers/theme_controller.dart';
 import 'routes/app_routes.dart';
+import 'services/chat_storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,9 @@ Future<void> main() async {
   await Hive.openBox<ChatModel>('chats');
   await Hive.openBox('settings');
   await Hive.openBox('models_meta');
+
+  // Initialize and Await Services that are required immediately
+  await Get.putAsync(() => ChatStorageService().init());
 
   // Controllers
   final themeCtrl = Get.put(ThemeController());
