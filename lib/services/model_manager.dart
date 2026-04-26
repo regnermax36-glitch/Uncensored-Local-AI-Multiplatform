@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:hive/hive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/ai_model_info.dart';
 import '../models/download_state.dart';
 
@@ -59,7 +61,6 @@ class ModelManager extends GetxService {
       ),
     ];
 
-    // Merge catalog and custom, avoiding duplicates by filename
     final all = <String, AiModelInfo>{};
     for (final m in catalog) { all[m.filename] = m; }
     for (final m in custom) { all[m.filename] = m; }
@@ -114,34 +115,52 @@ class ModelManager extends GetxService {
   }
 
   Future<String?> pickModelFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+    // Request permission on Android
+    if (Platform.isAndroid) {
+      await [Permission.storage, Permission.audio, Permission.videos, Permission.photos].request();
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      allowMultiple: false,
+    );
+
     if (result != null && result.files.single.path != null) {
-      final path = result.files.single.path!;
-      if (path.endsWith('.gguf')) {
-        final name = p.basename(path);
-        final newPath = p.join(modelsDir, name);
+      final sourcePath = result.files.single.path!;
+      final name = p.basename(sourcePath);
 
-        // Copy the file to the app's models directory
-        await File(path).copy(newPath);
+      if (!name.endsWith('.gguf')) {
+        Get.snackbar('Invalid File', 'Only .gguf models are supported.');
+        return null;
+      }
 
-        // Add to custom models metadata so it persists in the catalog
-        final List<dynamic> custom = _metaBox.get('custom_models', defaultValue: []);
+      final destPath = p.join(modelsDir, name);
+
+      try {
+        Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+        await File(sourcePath).copy(destPath);
+        Get.back(); // Dismiss dialog
+
         final info = AiModelInfo(
           name: name.split('.').first,
           filename: name,
           downloadUrl: '',
-          sizeGb: (File(newPath).lengthSync() / (1024 * 1024 * 1024)),
+          sizeGb: (File(destPath).lengthSync() / (1024 * 1024 * 1024)),
           minRamGb: 4,
           provider: 'Local Import',
           description: 'Imported from device storage.',
         );
 
+        final List<dynamic> custom = _metaBox.get('custom_models', defaultValue: []);
         custom.removeWhere((m) => m['filename'] == name);
         custom.add(info.toJson());
         await _metaBox.put('custom_models', custom);
 
         await refreshDownloadedModels();
         return name;
+      } catch (e) {
+        Get.back(); // Dismiss dialog
+        Get.snackbar('Import Failed', e.toString());
       }
     }
     return null;

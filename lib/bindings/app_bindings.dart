@@ -12,8 +12,7 @@ class AppBindings extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut(() => LlmService(), fenix: true);
-    Get.lazyPut(() => ModelManager(), fenix: true);
-    // ChatStorageService is now initialized in main() via putAsync
+    // Services initialized in main() via putAsync
     Get.lazyPut(() => LocalApiServerService(), fenix: true);
     Get.lazyPut(() => WakeWordService(), fenix: true);
 
