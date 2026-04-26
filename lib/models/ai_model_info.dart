@@ -1,33 +1,39 @@
 class AiModelInfo {
-  final String id, name, filename, url, label, badge, systemPrompt;
+  final String name, filename, downloadUrl, provider, description;
   final double sizeGb;
   final int minRamGb;
+  final bool isUncensored;
 
   const AiModelInfo({
-    required this.id, required this.name, required this.filename,
-    required this.url, required this.sizeGb, required this.minRamGb,
-    required this.label, required this.badge, required this.systemPrompt,
+    required this.name,
+    required this.filename,
+    required this.downloadUrl,
+    required this.sizeGb,
+    required this.minRamGb,
+    required this.provider,
+    required this.description,
+    this.isUncensored = false,
   });
 
   factory AiModelInfo.fromJson(Map<String, dynamic> json) => AiModelInfo(
-    id: json['id'] ?? '',
     name: json['name'] ?? '',
     filename: json['filename'] ?? '',
-    url: json['url'] ?? '',
+    downloadUrl: json['downloadUrl'] ?? '',
     sizeGb: (json['sizeGb'] ?? 0).toDouble(),
     minRamGb: json['minRamGb'] ?? 4,
-    label: json['label'] ?? 'STANDARD',
-    badge: json['badge'] ?? '',
-    systemPrompt: json['systemPrompt'] ?? '',
+    provider: json['provider'] ?? 'Unknown',
+    description: json['description'] ?? '',
+    isUncensored: json['isUncensored'] ?? false,
   );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'name': name, 'filename': filename, 'url': url,
-    'sizeGb': sizeGb, 'minRamGb': minRamGb, 'label': label,
-    'badge': badge, 'systemPrompt': systemPrompt,
+    'name': name,
+    'filename': filename,
+    'downloadUrl': downloadUrl,
+    'sizeGb': sizeGb,
+    'minRamGb': minRamGb,
+    'provider': provider,
+    'description': description,
+    'isUncensored': isUncensored,
   };
-
-  bool get isUncensored => label == 'UNCENSORED';
-  bool get isStandard => label == 'STANDARD';
-  bool get isCustom => label == 'CUSTOM';
 }

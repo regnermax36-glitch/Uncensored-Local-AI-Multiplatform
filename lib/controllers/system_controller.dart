@@ -42,81 +42,55 @@ class SystemController extends GetxController {
   }
 
   Future<void> setVolume(double value) async {
-    final clamped = value.clamp(0.0, 1.0);
-    VolumeController().setVolume(clamped);
-    currentVolume.value = clamped;
+    final v = value.clamp(0.0, 1.0);
+    VolumeController().setVolume(v);
+    currentVolume.value = v;
   }
 
   Future<void> setBrightness(double value) async {
-    final clamped = value.clamp(0.0, 1.0);
+    final v = value.clamp(0.0, 1.0);
     try {
-      await ScreenBrightness().setApplicationScreenBrightness(clamped);
-      currentBrightness.value = clamped;
-    } catch (e) {
-      print('Failed to set brightness: $e');
-    }
+      await ScreenBrightness().setApplicationScreenBrightness(v);
+      currentBrightness.value = v;
+    } catch (_) {}
   }
 
   Future<void> toggleTorch(bool on) async {
     try {
-      if (on) {
-        await TorchLight.enableTorch();
-      } else {
-        await TorchLight.disableTorch();
-      }
-    } catch (e) {
-      print('Flashlight error: $e');
-    }
+      if (on) await TorchLight.enableTorch(); else await TorchLight.disableTorch();
+    } catch (_) {}
   }
 
-  void openWifiSettings() {
-    AppSettings.openAppSettings(type: AppSettingsType.wifi);
-  }
-
-  void openBluetoothSettings() {
-    AppSettings.openAppSettings(type: AppSettingsType.bluetooth);
-  }
-
-  void openMainSettings() {
-    AppSettings.openAppSettings(type: AppSettingsType.settings);
-  }
-
-  void openBatterySettings() {
-    AppSettings.openAppSettings(type: AppSettingsType.batteryOptimization);
-  }
-
-  void openDisplaySettings() {
-    AppSettings.openAppSettings(type: AppSettingsType.display);
-  }
+  void openWifiSettings() => AppSettings.openAppSettings(type: AppSettingsType.wifi);
+  void openBluetoothSettings() => AppSettings.openAppSettings(type: AppSettingsType.bluetooth);
+  void openMainSettings() => AppSettings.openAppSettings(type: AppSettingsType.settings);
+  void openBatterySettings() => AppSettings.openAppSettings(type: AppSettingsType.batteryOptimization);
+  void openDisplaySettings() => AppSettings.openAppSettings(type: AppSettingsType.display);
+  void openNotificationSettings() => AppSettings.openAppSettings(type: AppSettingsType.notification);
+  void openDNDSettings() => AppSettings.openAppSettings(type: AppSettingsType.notification);
 
   Future<List<Map<String, String>>> getLaunchableApps() async {
     final apps = await InstalledApps.getInstalledApps();
-    return apps.map((a) => {'name': a.name ?? '', 'package': a.packageName ?? ''}).toList();
+    return apps.map((a) => {'name': a.name ?? 'App', 'package': a.packageName ?? ''}).toList();
   }
 
-  Future<bool> launchApp(String nameOrPackage) async {
+  Future<void> launchApp(String nameOrPackage) async {
     try {
       final success = await InstalledApps.startApp(nameOrPackage);
-      if (success == true) return true;
+      if (success == true) return;
     } catch (_) {}
 
     final apps = await InstalledApps.getInstalledApps();
     for (final app in apps) {
-      if ((app.name ?? '').toLowerCase() == nameOrPackage.toLowerCase()) {
-        final success = await InstalledApps.startApp(app.packageName ?? '');
-        return success == true;
+      if ((app.name ?? '').toLowerCase().contains(nameOrPackage.toLowerCase())) {
+        await InstalledApps.startApp(app.packageName ?? '');
+        return;
       }
     }
-    return false;
   }
 
   Future<String> getSystemSummary() async {
     await _updateBatteryLevel();
-    final level = batteryLevel.value;
-    final state = batteryState.value.toString().split('.').last;
-    final vol = (currentVolume.value * 100).toInt();
-    final bright = (currentBrightness.value * 100).toInt();
-
-    return 'Battery: $level% ($state), Volume: $vol%, Brightness: $bright%';
+    return 'Battery: ${batteryLevel.value}%, Vol: ${(currentVolume.value * 100).toInt()}%, Bright: ${(currentBrightness.value * 100).toInt()}%';
   }
 }

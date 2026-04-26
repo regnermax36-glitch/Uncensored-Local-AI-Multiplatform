@@ -16,21 +16,49 @@ class FluidGlowPainter extends StatefulWidget {
 }
 
 class _FluidGlowPainterState extends State<FluidGlowPainter>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+    with TickerProviderStateMixin {
+  late AnimationController _rotationController;
+  late AnimationController _pulseController;
+  late AnimationController _opacityController;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 5),
     )..repeat();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _opacityController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    if (widget.isVisible) _opacityController.forward();
+  }
+
+  @override
+  void didUpdateWidget(FluidGlowPainter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVisible != oldWidget.isVisible) {
+      if (widget.isVisible) {
+        _opacityController.forward();
+      } else {
+        _opacityController.reverse();
+      }
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _rotationController.dispose();
+    _pulseController.dispose();
+    _opacityController.dispose();
     super.dispose();
   }
 
@@ -39,79 +67,111 @@ class _FluidGlowPainterState extends State<FluidGlowPainter>
     return Stack(
       children: [
         widget.child,
-        if (widget.isVisible)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  return CustomPaint(
-                    painter: _FluidPainter(progress: _controller.value),
-                  );
-                },
+        AnimatedBuilder(
+          animation: Listenable.merge([_rotationController, _pulseController, _opacityController]),
+          builder: (context, child) {
+            if (_opacityController.value == 0) return const SizedBox.shrink();
+            return Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: _opacityController.value,
+                  child: CustomPaint(
+                    painter: _AppleGlowPainter(
+                      rotation: _rotationController.value,
+                      pulse: _pulseController.value,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
+        ),
       ],
     );
   }
 }
 
-class _FluidPainter extends CustomPainter {
-  final double progress;
+class _AppleGlowPainter extends CustomPainter {
+  final double rotation;
+  final double pulse;
 
-  _FluidPainter({required this.progress});
+  _AppleGlowPainter({required this.rotation, required this.pulse});
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
+    final center = size.center(Offset.zero);
 
-    final List<Color> siriColors = [
-      const Color(0xFF00D2FF), // Cyan
-      const Color(0xFF3A7BD5), // Blue
-      const Color(0xFF8E2DE2), // Purple
-      const Color(0xFFFF00CC), // Pink
-      const Color(0xFFFF9500), // Orange
-      const Color(0xFF00D2FF), // Cyan
+    // Apple Intelligence Palette
+    final colors = [
+      const Color(0xFF4285F4).withOpacity(0.8), // Blue
+      const Color(0xFF9B51E0).withOpacity(0.8), // Purple
+      const Color(0xFFEB5757).withOpacity(0.8), // Red
+      const Color(0xFFF2C94C).withOpacity(0.8), // Yellow
+      const Color(0xFF27AE60).withOpacity(0.8), // Green
+      const Color(0xFF2D9CDB).withOpacity(0.8), // Light Blue
+      const Color(0xFF4285F4).withOpacity(0.8), // Cycle
     ];
 
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 25
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 25);
+    // 1. Layer: Background Bloom
+    final bloomPaint = Paint()
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60)
+      ..style = PaintingStyle.fill;
 
-    // Multi-layered edge glow with offset rotation
-    for (int i = 0; i < 3; i++) {
-      final double localProgress = (progress + (i * 0.33)) % 1.0;
-      final edgeGradient = SweepGradient(
-        colors: siriColors,
-        transform: GradientRotation(localProgress * 2 * math.pi * (i.isEven ? 1 : -1)),
-      ).createShader(rect);
-
-      paint.shader = edgeGradient;
-      paint.strokeWidth = 20.0 + (math.sin(progress * 2 * math.pi) * 10);
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect.deflate(5 + (i * 4).toDouble()), const Radius.circular(45)),
-        paint,
+    for (int i = 0; i < 4; i++) {
+      final angle = (rotation * 2 * math.pi) + (i * math.pi / 2);
+      final offset = Offset(
+        math.cos(angle) * (size.width / 3),
+        math.sin(angle) * (size.height / 3),
       );
+
+      bloomPaint.color = colors[i % colors.length].withOpacity(0.15 * (1 + pulse * 0.5));
+      canvas.drawCircle(center + offset, 150 + (pulse * 50), bloomPaint);
     }
 
-    // Bottom primary glow intensity
-    final bottomRect = Rect.fromLTWH(0, size.height * 0.8, size.width, size.height * 0.2);
-    final bottomGradient = LinearGradient(
-      colors: [Colors.transparent, const Color(0xFF8E2DE2).withOpacity(0.4), Colors.transparent],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ).createShader(bottomRect);
+    // 2. Layer: Edge Rainbow Border
+    final double thickness = 12.0 + (pulse * 8.0);
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = thickness
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
 
-    final bPaint = Paint()
-      ..shader = bottomGradient
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
-    canvas.drawRect(bottomRect, bPaint);
+    final sweepGradient = SweepGradient(
+      colors: colors,
+      transform: GradientRotation(rotation * 2 * math.pi),
+    );
+
+    borderPaint.shader = sweepGradient.createShader(rect);
+
+    final rrect = RRect.fromRectAndRadius(
+      rect.deflate(thickness / 2),
+      const Radius.circular(50),
+    );
+
+    canvas.drawRRect(rrect, borderPaint);
+
+    // 3. Layer: Intense Corner Highlights
+    final highlightPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = thickness / 2
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+
+    for (int i = 0; i < 4; i++) {
+      final highlightGradient = SweepGradient(
+        center: i == 0 ? Alignment.topLeft : i == 1 ? Alignment.topRight : i == 2 ? Alignment.bottomRight : Alignment.bottomLeft,
+        colors: [Colors.white.withOpacity(0.5), Colors.transparent],
+        startAngle: 0,
+        endAngle: math.pi / 2,
+        transform: GradientRotation(rotation * 4 * math.pi),
+      ).createShader(rect);
+
+      highlightPaint.shader = highlightGradient;
+      canvas.drawRRect(rrect, highlightPaint);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _FluidPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _AppleGlowPainter oldDelegate) =>
+      oldDelegate.rotation != rotation || oldDelegate.pulse != pulse;
 }

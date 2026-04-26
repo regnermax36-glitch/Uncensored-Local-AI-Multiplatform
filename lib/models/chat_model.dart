@@ -1,5 +1,6 @@
+import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'message_model.dart';
+import '../models/message_model.dart';
 
 part 'chat_model.g.dart';
 
@@ -10,34 +11,38 @@ class ChatModel extends HiveObject {
   @HiveField(1)
   String title;
   @HiveField(2)
-  String modelId;
+  List<MessageModel> messages;
   @HiveField(3)
-  String systemPrompt;
-  @HiveField(4)
-  final List<MessageModel> messages;
-  @HiveField(5)
-  final DateTime createdAt;
-  @HiveField(6)
   DateTime updatedAt;
+  @HiveField(4)
+  String modelId;
+  @HiveField(5)
+  String systemPrompt;
 
   ChatModel({
     required this.id,
-    this.title = 'New Apple AI Chat',
+    this.title = '',
+    List<MessageModel>? messages,
+    DateTime? updatedAt,
     this.modelId = '',
     this.systemPrompt = '',
-    List<MessageModel>? messages,
-    DateTime? createdAt,
-    DateTime? updatedAt,
   })  : messages = messages ?? [],
-        createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   void autoTitle() {
-    if (title != 'New Apple AI Chat') return;
-    final firstUserMsg = messages.where((m) => m.isUser).firstOrNull;
-    if (firstUserMsg != null) {
-      final raw = firstUserMsg.content.trim();
-      title = raw.length > 30 ? '${raw.substring(0, 30)}…' : raw;
+    if (title.isEmpty && messages.isNotEmpty) {
+      final first = messages.first.content;
+      title = first.length > 25 ? '${first.substring(0, 22)}...' : first;
     }
   }
+}
+
+@HiveType(typeId: 3)
+enum MessageRole {
+  @HiveField(0)
+  system,
+  @HiveField(1)
+  user,
+  @HiveField(2)
+  assistant
 }

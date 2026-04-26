@@ -12,14 +12,7 @@ class LocalApiServerService extends GetxService {
   HttpServer? _server;
 
   final isRunning = false.obs;
-  final isStarting = false.obs;
-  final errorMessage = ''.obs;
   final port = 4891.obs;
-
-  String get baseUrl => 'http://127.0.0.1:${port.value}/v1';
-  bool get isBusy => _llm.isGenerating.value;
-  bool get hasLoadedModel => _llm.isLoaded.value;
-  String get modelId => _llm.publicModelId;
 
   Future<LocalApiServerService> init() async {
     port.value = _storage.localApiServerPort;
@@ -29,17 +22,13 @@ class LocalApiServerService extends GetxService {
 
   Future<void> start() async {
     if (isRunning.value) return;
-    isStarting.value = true;
     try {
       _server = await HttpServer.bind(InternetAddress.loopbackIPv4, port.value);
       isRunning.value = true;
       _storage.localApiServerEnabled = true;
-      _server!.listen(_handle);
+      _server!.listen(_handleRequest);
     } catch (e) {
-      errorMessage.value = e.toString();
       isRunning.value = false;
-    } finally {
-      isStarting.value = false;
     }
   }
 
@@ -50,22 +39,27 @@ class LocalApiServerService extends GetxService {
     _storage.localApiServerEnabled = false;
   }
 
-  Future<void> setPort(int p) async {
-    port.value = p;
-    _storage.localApiServerPort = p;
-    if (isRunning.value) { await stop(); await start(); }
-  }
-
-  void _handle(HttpRequest req) async {
+  void _handleRequest(HttpRequest req) async {
     req.response.headers.add('Access-Control-Allow-Origin', '*');
-    if (req.method == 'OPTIONS') { req.response.statusCode = HttpStatus.noContent; await req.response.close(); return; }
+    req.response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    req.response.headers.add('Access-Control-Allow-Headers', '*');
+
+    if (req.method == 'OPTIONS') {
+      req.response.statusCode = HttpStatus.noContent;
+      await req.response.close();
+      return;
+    }
+
     try {
       if (req.uri.path == '/v1/models') {
-        req.response.write(jsonEncode({'object': 'list', 'data': [{'id': modelId, 'object': 'model'}]}));
+        _sendJson(req, {'object': 'list', 'data': [{'id': _llm.publicModelId, 'object': 'model'}]});
       } else if (req.uri.path == '/v1/chat/completions') {
         final body = await utf8.decoder.bind(req).join();
         final data = jsonDecode(body);
-        final messages = (data['messages'] as List).map((m) => LlamaChatMessage.fromText(role: m['role'] == 'user' ? LlamaChatRole.user : LlamaChatRole.assistant, text: m['content'])).toList();
+        final messages = (data['messages'] as List).map((m) => LlamaChatMessage.fromText(
+          role: m['role'] == 'user' ? LlamaChatRole.user : LlamaChatRole.assistant,
+          text: m['content']
+        )).toList();
 
         if (data['stream'] == true) {
           req.response.headers.contentType = ContentType('text', 'event-stream', charset: 'utf-8');
@@ -76,10 +70,21 @@ class LocalApiServerService extends GetxService {
         } else {
           final buffer = StringBuffer();
           await for (final token in _llm.generateChatCompletion(messages: messages)) { buffer.write(token); }
-          req.response.write(jsonEncode({'choices': [{'message': {'role': 'assistant', 'content': buffer.toString()}}]}));
+          _sendJson(req, {'choices': [{'message': {'role': 'assistant', 'content': buffer.toString()}}]});
         }
-      } else { req.response.statusCode = HttpStatus.notFound; }
-    } catch (e) { req.response.statusCode = HttpStatus.internalServerError; req.response.write(e.toString()); }
-    await req.response.close();
+      } else {
+        req.response.statusCode = HttpStatus.notFound;
+      }
+    } catch (e) {
+      req.response.statusCode = HttpStatus.internalServerError;
+      req.response.write(e.toString());
+    } finally {
+      await req.response.close();
+    }
+  }
+
+  void _sendJson(HttpRequest req, Map<String, dynamic> data) {
+    req.response.headers.contentType = ContentType.json;
+    req.response.write(jsonEncode(data));
   }
 }

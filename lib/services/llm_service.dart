@@ -1,135 +1,77 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:get/get.dart';
 import 'package:llamadart/llamadart.dart';
-import 'package:path/path.dart' as p;
 
 class LlmService extends GetxService {
   LlamaEngine? _engine;
-  LlamaBackend? _backend;
-
+  ChatSession? _session;
   final isLoaded = false.obs;
   final isGenerating = false.obs;
-  final loadedModelPath = ''.obs;
-  final tokensPerSecond = 0.0.obs;
-  final lastGenerationSpeed = 0.0.obs;
+  String publicModelId = 'none';
 
-  final isLoadingModel = false.obs;
-  final loadingProgress = 0.0.obs;
-  final loadingStatusMsg = ''.obs;
-  bool _loadingCancelled = false;
-
-  Future<LlmService> init() async => this;
-
-  void cancelLoading() => _loadingCancelled = true;
-
-  String get publicModelId {
-    if (loadedModelPath.isEmpty) return 'local';
-    return p.basenameWithoutExtension(loadedModelPath.value);
-  }
-
-  Future<void> loadModel(String path) async {
-    final file = File(path);
-    if (!await file.exists()) throw Exception('Model not found');
-    _loadingCancelled = false;
-    isLoadingModel.value = true;
-    loadingProgress.value = 0.1;
-    loadingStatusMsg.value = 'Intelligizing...';
-    await unloadModel();
-    _backend = LlamaBackend();
-    _engine = LlamaEngine(_backend!);
+  Future<bool> loadModel(String path, {Function(double)? onProgress}) async {
+    unloadModel();
     try {
-      final params = ModelParams(contextSize: 2048, gpuLayers: 0, preferredBackend: GpuBackend.cpu, numberOfThreads: 4);
-      await _engine!.loadModel(path, modelParams: params);
-      if (_loadingCancelled) {
-        await unloadModel();
-        return;
-      }
+      _engine = LlamaEngine(LlamaBackend());
+
+      // Initial progress
+      onProgress?.call(0.1);
+
+      await _engine!.loadModel(path);
+
+      // Final progress
+      onProgress?.call(1.0);
+
       isLoaded.value = true;
-      loadedModelPath.value = path;
+      publicModelId = path.split('/').last;
+      return true;
     } catch (e) {
-      await unloadModel();
-      rethrow;
-    } finally {
-      isLoadingModel.value = false;
+      isLoaded.value = false;
+      return false;
     }
   }
 
-  static final _stopPatterns = RegExp(r'<\|end\|>|<\|eot_id\|>|<\|endoftext\|>|<\|im_end\|>|<\|im_start\|>|<end_of_turn>|<start_of_turn>|<\|assistant\|>|<\|user\|>|<\|system\|>|</s>|<s>|\[INST\]|\[/INST\]|\[end\]');
-
-  Stream<String> generate({required List<Map<String, String>> messages, String? systemPrompt, double temperature = 0.7}) async* {
-    if (_engine == null) throw StateError('Engine not ready');
-    isGenerating.value = true;
-    final stopwatch = Stopwatch()..start();
-    int count = 0;
-    String buffer = "";
-
-    final prompt = _buildPrompt(messages, systemPrompt);
-    await for (final token in _engine!.generate(prompt)) {
-      count++;
-      tokensPerSecond.value = count / (stopwatch.elapsedMilliseconds / 1000);
-
-      buffer += token;
-      if (_stopPatterns.hasMatch(buffer)) {
-        final cleaned = buffer.replaceAll(_stopPatterns, '').trim();
-        if (cleaned.isNotEmpty) yield cleaned;
-        break;
-      }
-
-      if (buffer.length > 40) {
-        final safe = buffer.substring(0, buffer.length - 30);
-        buffer = buffer.substring(buffer.length - 30);
-        yield safe;
-      }
-    }
-
-    if (buffer.isNotEmpty) {
-      final cleaned = buffer.replaceAll(_stopPatterns, '').trim();
-      if (cleaned.isNotEmpty) yield cleaned;
-    }
-
-    lastGenerationSpeed.value = tokensPerSecond.value;
-    isGenerating.value = false;
-  }
-
-  Future<void> stopGeneration() async => isGenerating.value = false;
-  Future<void> unloadModel() async {
-    await _engine?.dispose();
+  void unloadModel() {
+    _engine?.dispose();
     _engine = null;
-    _backend = null;
+    _session = null;
     isLoaded.value = false;
-    loadedModelPath.value = '';
+    publicModelId = 'none';
   }
 
-  String _buildPrompt(List<Map<String, String>> messages, String? sys) {
-    final b = StringBuffer();
-    if (sys != null) b.writeln('<|system|>\n$sys\n<|end|>');
-    for (final m in messages) b.writeln('<|${m['role']}|>\n${m['content']}\n<|end|>');
-    b.writeln('<|assistant|>');
-    return b.toString();
-  }
-
-  Future<int> countTokens(String text) async {
-    if (_engine == null) return 0;
-    return await _engine!.getTokenCount(text);
-  }
-
-  Stream<String> generateChatCompletion({required List<LlamaChatMessage> messages, GenerationParams params = const GenerationParams()}) async* {
-    if (_engine == null) throw StateError('Engine not ready');
+  Stream<String> generate({
+    required List<LlamaChatMessage> messages,
+    required String systemPrompt,
+    double temperature = 0.7,
+  }) async* {
+    if (_engine == null) return;
     isGenerating.value = true;
-    final stopwatch = Stopwatch()..start();
-    int count = 0;
+
     try {
-      await for (final chunk in _engine!.create(messages, params: params)) {
-        final content = chunk.choices.firstOrNull?.delta.content;
-        if (content == null) continue;
-        count++;
-        tokensPerSecond.value = count / (stopwatch.elapsedMilliseconds / 1000);
-        yield content;
+      _session ??= ChatSession(_engine!);
+      _session!.systemPrompt = systemPrompt;
+
+      _session!.reset(keepSystemPrompt: true);
+      for (final m in messages) {
+        _session!.addMessage(m);
+      }
+
+      final stream = _session!.create([], params: GenerationParams(temp: temperature));
+
+      await for (final chunk in stream) {
+        final content = chunk.choices.first.delta.content;
+        if (content != null) yield content;
       }
     } finally {
-      lastGenerationSpeed.value = tokensPerSecond.value;
       isGenerating.value = false;
     }
+  }
+
+  Stream<String> generateChatCompletion({required List<LlamaChatMessage> messages}) {
+    return generate(messages: messages, systemPrompt: "Helpful assistant.");
+  }
+
+  void stopGeneration() {
+    isGenerating.value = false;
   }
 }

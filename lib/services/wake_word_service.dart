@@ -13,19 +13,14 @@ class WakeWordService extends GetxService {
     _sttController.listen(
       onListeningTextChanged: (text) {
         final lowerText = text.toLowerCase();
-        if (lowerText.contains("computer") || lowerText.contains("hey siri")) {
+        if (lowerText.contains("computer") || lowerText.contains("hey siri") || lowerText.contains("assistant")) {
           onWakeWordDetected.trigger(null);
-          // Pause briefly after detection to prevent double triggers
           stop();
-          Future.delayed(const Duration(seconds: 2), () => start());
+          Future.delayed(const Duration(seconds: 3), () => start());
         }
       },
       onListeningStateChanged: (state) {
-        if (state == ManualSttState.listening) {
-          isListening.value = true;
-        } else {
-          isListening.value = false;
-        }
+        isListening.value = (state == ManualSttState.listening);
       },
     );
   }
@@ -36,17 +31,13 @@ class WakeWordService extends GetxService {
 
     try {
       _sttController.startStt();
-    } catch (e) {
-      print("WakeWord start error: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> stop() async {
     try {
       _sttController.stopStt();
-    } catch (e) {
-      print("WakeWord stop error: $e");
-    }
+    } catch (_) {}
   }
 
   @override

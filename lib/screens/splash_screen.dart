@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-
-import '../theme/app_colors.dart';
-import '../services/llm_service.dart';
-import '../services/model_manager.dart';
-import '../services/chat_storage_service.dart';
-import '../services/local_api_server_service.dart';
 import '../routes/app_routes.dart';
+import '../theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,98 +12,50 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  String _status = 'Initializing...';
-
   @override
   void initState() {
     super.initState();
-    _initApp();
+    _init();
   }
 
-  Future<void> _initApp() async {
-    try {
-      setState(() => _status = 'Setting up storage...');
-      await Get.find<ChatStorageService>().init();
-
-      setState(() => _status = 'Loading model catalog...');
-      await Get.find<ModelManager>().init();
-
-      setState(() => _status = 'Preparing AI engine...');
-      await Get.find<LlmService>().init();
-
-      setState(() => _status = 'Preparing local API...');
-      await Get.find<LocalApiServerService>().init();
-
-      setState(() => _status = 'Ready!');
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      Get.offAllNamed(AppRoutes.home);
-    } catch (e) {
-      setState(() => _status = 'Error: $e');
-    }
+  void _init() async {
+    await Future.delayed(const Duration(seconds: 3));
+    Get.offAllNamed(AppRoutes.home);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.bg,
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Logo
             Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.accentGradient,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.bolt_rounded,
-                    size: 42,
-                    color: Colors.white,
-                  ),
-                )
-                .animate()
-                .fadeIn(duration: 600.ms)
-                .scale(begin: const Offset(0.8, 0.8)),
-            const SizedBox(height: 24),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: AppColors.purple.withOpacity(0.5), blurRadius: 40, spreadRadius: 10)
+                ],
+              ),
+              child: Image.network(
+                'https://www.apple.com/v/apple-intelligence/a/images/overview/hero/apple_intelligence_icon__f9v7p6x8r1yq_large.png',
+                width: 150,
+                height: 150,
+              ),
+            ).animate().scale(duration: 1200.ms, curve: Curves.elasticOut).fadeIn(),
+            const SizedBox(height: 40),
             Text(
-              'Uncensored Local AI',
+              'Apple Intelligence',
               style: TextStyle(
                 fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: context.text,
-                letterSpacing: -0.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -1,
+                color: Colors.white,
+                shadows: [Shadow(color: Colors.white24, blurRadius: 20)]
               ),
-            ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
-            const SizedBox(height: 8),
-            Text(
-              'Run uncensored LLMs natively on any device 🔓',
-              style: TextStyle(fontSize: 13, color: context.textM),
-            ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
-            const SizedBox(height: 40),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation(AppColors.accent),
-              ),
-            ).animate().fadeIn(delay: 600.ms),
-            const SizedBox(height: 16),
-            Text(
-              _status,
-              style: TextStyle(fontSize: 12, color: context.textD),
-            ).animate().fadeIn(delay: 600.ms),
+            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
           ],
         ),
       ),

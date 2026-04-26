@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:android_intent_plus/android_intent.dart';
-
 import '../theme/app_colors.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/theme_controller.dart';
 import '../services/local_api_server_service.dart';
-import '../services/model_manager.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
@@ -14,109 +11,64 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = _SettingsBody(showBackButton: !embedded);
-    if (embedded) return body;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: body,
-    );
-  }
-}
-
-class _SettingsBody extends StatelessWidget {
-  final bool showBackButton;
-  const _SettingsBody({this.showBackButton = false});
-
-  @override
-  Widget build(BuildContext context) {
     final chatCtrl = Get.find<ChatController>();
     final themeCtrl = Get.find<ThemeController>();
     final apiServer = Get.find<LocalApiServerService>();
-    final modelManager = Get.find<ModelManager>();
 
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ListView(
+        children: [
+          const SizedBox(height: 20),
+          Text('Settings', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1, color: context.text)),
+          const SizedBox(height: 24),
+          _section(context, 'Appearance', [
+            _tile(context, Icons.dark_mode_rounded, Colors.purple, 'Dark Mode',
+              trailing: Switch.adaptive(value: themeCtrl.isDarkMode, onChanged: (_) => themeCtrl.toggleTheme(), activeTrackColor: AppColors.accent)),
+          ]),
+          _section(context, 'Intelligence', [
+            _tile(context, Icons.thermostat_rounded, Colors.orange, 'Creativity',
+              subtitle: 'Higher values make responses more creative.'),
+            Obx(() => Slider.adaptive(value: chatCtrl.temperature.value, min: 0, max: 2, divisions: 20, activeColor: AppColors.accent, onChanged: (v) => chatCtrl.updateTemperature(v))),
+          ]),
+          _section(context, 'Advanced', [
+            _tile(context, Icons.api_rounded, Colors.blue, 'Local API Server',
+              trailing: Obx(() => Switch.adaptive(value: apiServer.isRunning.value, onChanged: (v) => v ? apiServer.start() : apiServer.stop(), activeTrackColor: AppColors.accent))),
+            _tile(context, Icons.delete_forever_rounded, Colors.red, 'Reset All Chats', onTap: () => chatCtrl.chats.clear()),
+          ]),
+          const SizedBox(height: 40),
+          Center(child: Text('Apple Intelligence for Android v1.2', style: TextStyle(color: context.textD, fontSize: 12))),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(BuildContext context, String title, List<Widget> items) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(top: showBackButton ? MediaQuery.of(context).padding.top + 12 : 20, left: 24, right: 24, bottom: 12),
-          child: Row(
-            children: [
-              if (showBackButton) IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), onPressed: () => Get.back()),
-              Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: context.text)),
-            ],
+        Padding(padding: const EdgeInsets.only(left: 16, bottom: 8), child: Text(title.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.textD))),
+        Container(
+          decoration: BoxDecoration(
+            color: context.isDark ? const Color(0xFF1C1C1E) : Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
           ),
+          child: Column(children: items),
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              _group([
-                _tile(context, Icons.dark_mode_rounded, Colors.purple, 'Dark Mode',
-                  trailing: Obx(() => Switch.adaptive(value: themeCtrl.isDarkMode, onChanged: (v) => themeCtrl.toggleTheme(), activeColor: Colors.white, activeTrackColor: AppColors.accent))),
-              ]),
-              _groupTitle('INTELLIGENCE'),
-              _group([
-                Column(
-                  children: [
-                    _tile(context, Icons.thermostat_rounded, Colors.orange, 'Creativity'),
-                    Obx(() => Slider.adaptive(value: chatCtrl.temperature.value, min: 0, max: 2, divisions: 20, activeColor: AppColors.accent, onChanged: (v) => chatCtrl.updateTemperature(v))),
-                  ],
-                ),
-              ]),
-              _groupTitle('ASSISTANT'),
-              _group([
-                _tile(context, Icons.assistant_rounded, Colors.blue, 'Default Assistant',
-                  subtitle: 'Set Apple AI as your default system assistant',
-                  onTap: () async {
-                    const intent = AndroidIntent(action: 'android.settings.VOICE_INPUT_SETTINGS');
-                    await intent.launch();
-                  }),
-              ]),
-              _groupTitle('CONNECTIVITY'),
-              _group([
-                _tile(context, Icons.api_rounded, Colors.blue, 'Local Server',
-                  trailing: Obx(() => Switch.adaptive(value: apiServer.isRunning.value, onChanged: (v) => v ? apiServer.start() : apiServer.stop(), activeColor: Colors.white, activeTrackColor: AppColors.accent))),
-                _tile(context, Icons.lan_rounded, Colors.green, 'API Port', trailing: Text(apiServer.port.value.toString(), style: TextStyle(color: context.textD))),
-              ]),
-              _groupTitle('STORAGE'),
-              _group([
-                _tile(context, Icons.folder_rounded, Colors.grey, 'Models Path', subtitle: modelManager.modelsDir),
-              ]),
-              _group([
-                _tile(context, Icons.delete_sweep_rounded, Colors.red, 'Clear Memory', titleColor: Colors.red, onTap: () {
-                  chatCtrl.chats.clear();
-                  chatCtrl.activeChatId.value = null;
-                }),
-              ]),
-              const SizedBox(height: 40),
-              Center(child: Text('Apple Intelligence v1.2.0', style: TextStyle(color: context.textD, fontSize: 13))),
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
+        const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _groupTitle(String title) {
-    return Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey, letterSpacing: 1)));
-  }
-
-  Widget _group(List<Widget> children) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: Get.context!.isDark ? const Color(0xFF1C1C1E) : Colors.black.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _tile(BuildContext context, IconData icon, Color color, String title, {Widget? trailing, String? subtitle, Color? titleColor, VoidCallback? onTap}) {
+  Widget _tile(BuildContext context, IconData icon, Color color, String title, {String? subtitle, Widget? trailing, VoidCallback? onTap}) {
     return ListTile(
       onTap: onTap,
-      leading: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)), child: Icon(icon, color: Colors.white, size: 18)),
-      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor ?? context.text)),
-      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
+      leading: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: Colors.white, size: 18)),
+      title: Text(title, style: TextStyle(fontSize: 16, color: context.text)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(fontSize: 12, color: context.textD)) : null,
       trailing: trailing,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }
