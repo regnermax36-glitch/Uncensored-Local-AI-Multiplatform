@@ -75,8 +75,12 @@ class ModelController extends GetxController {
   }
 
   Future<void> importModelFromFile() async {
-    final file = await _manager.pickModelFile();
-    if (file != null) _loadCatalog();
+    final name = await _manager.pickModelFile();
+    if (name != null) {
+      _loadCatalog();
+      // Automatically attempt to load the imported model
+      await loadModel(name);
+    }
   }
 
   Future<void> importFromDirectory() async {

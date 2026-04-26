@@ -59,7 +59,12 @@ class ModelManager extends GetxService {
       ),
     ];
 
-    return [...catalog, ...custom];
+    // Merge catalog and custom, avoiding duplicates by filename
+    final all = <String, AiModelInfo>{};
+    for (final m in catalog) { all[m.filename] = m; }
+    for (final m in custom) { all[m.filename] = m; }
+
+    return all.values.toList();
   }
 
   Future<void> downloadModel(AiModelInfo model) async {
@@ -115,7 +120,26 @@ class ModelManager extends GetxService {
       if (path.endsWith('.gguf')) {
         final name = p.basename(path);
         final newPath = p.join(modelsDir, name);
+
+        // Copy the file to the app's models directory
         await File(path).copy(newPath);
+
+        // Add to custom models metadata so it persists in the catalog
+        final List<dynamic> custom = _metaBox.get('custom_models', defaultValue: []);
+        final info = AiModelInfo(
+          name: name.split('.').first,
+          filename: name,
+          downloadUrl: '',
+          sizeGb: (File(newPath).lengthSync() / (1024 * 1024 * 1024)),
+          minRamGb: 4,
+          provider: 'Local Import',
+          description: 'Imported from device storage.',
+        );
+
+        custom.removeWhere((m) => m['filename'] == name);
+        custom.add(info.toJson());
+        await _metaBox.put('custom_models', custom);
+
         await refreshDownloadedModels();
         return name;
       }
@@ -125,6 +149,23 @@ class ModelManager extends GetxService {
 
   Future<void> scanForModels() async {
     await refreshDownloadedModels();
+    final List<dynamic> custom = _metaBox.get('custom_models', defaultValue: []);
+
+    for (final filename in downloadedModels) {
+      if (!custom.any((m) => m['filename'] == filename)) {
+        final info = AiModelInfo(
+          name: filename.split('.').first,
+          filename: filename,
+          downloadUrl: '',
+          sizeGb: (File(p.join(modelsDir, filename)).lengthSync() / (1024 * 1024 * 1024)),
+          minRamGb: 4,
+          provider: 'Local Scan',
+          description: 'Found in models directory.',
+        );
+        custom.add(info.toJson());
+      }
+    }
+    await _metaBox.put('custom_models', custom);
   }
 
   void removeCustomModel(AiModelInfo model) {
