@@ -1,572 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import '../theme/app_colors.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/theme_controller.dart';
 import '../services/local_api_server_service.dart';
-import '../services/model_manager.dart';
 
 class SettingsScreen extends StatelessWidget {
-  /// When true, no Scaffold — just the body content for embedding in tabs.
   final bool embedded;
-
   const SettingsScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
-    if (embedded) {
-      return _SettingsBody(showBackButton: false);
-    }
-    return Scaffold(
-      backgroundColor: context.bg,
-      body: _SettingsBody(showBackButton: true),
-    );
-  }
-}
-
-class _SettingsBody extends StatelessWidget {
-  final bool showBackButton;
-
-  const _SettingsBody({this.showBackButton = false});
-
-  @override
-  Widget build(BuildContext context) {
     final chatCtrl = Get.find<ChatController>();
-    final modelManager = Get.find<ModelManager>();
     final themeCtrl = Get.find<ThemeController>();
     final apiServer = Get.find<LocalApiServerService>();
 
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ListView(
+        children: [
+          const SizedBox(height: 30),
+          Text('SYSTEM CORE', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 4, color: context.text)),
+          const SizedBox(height: 8),
+          Text('INTERFACE PROTOCOL // V2.0.89', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: context.textD, letterSpacing: 2)),
+          const SizedBox(height: 30),
+
+          _cyberSection(context, 'SYNAPSE CONFIG', [
+            _cyberTile(context, Icons.lens_blur_rounded, AppColors.neonPurple, 'Neural Dark Mode',
+              trailing: Switch.adaptive(value: themeCtrl.isDarkMode, onChanged: (_) => themeCtrl.toggleTheme(), activeTrackColor: context.neonCyan)),
+            _cyberTile(context, Icons.waves_rounded, AppColors.neonBlue, 'Cognitive Flow',
+              subtitle: 'Adjust generation variance'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Obx(() => Slider.adaptive(value: chatCtrl.temperature.value, min: 0, max: 2, divisions: 20, activeColor: context.neonBlue, onChanged: (v) => chatCtrl.updateTemperature(v))),
+            ),
+          ]),
+
+          _cyberSection(context, 'NETWORK UPLINK', [
+            _cyberTile(context, Icons.terminal_rounded, AppColors.neonCyan, 'Local API Node',
+              trailing: Obx(() => Switch.adaptive(value: apiServer.isRunning.value, onChanged: (v) => v ? apiServer.start() : apiServer.stop(), activeTrackColor: context.neonCyan))),
+            _cyberTile(context, Icons.security_rounded, Colors.redAccent, 'Purge Memory',
+              onTap: () => chatCtrl.chats.clear()),
+          ]),
+
+          const SizedBox(height: 40),
+          Center(
+            child: Opacity(
+              opacity: 0.5,
+              child: Column(
+                children: [
+                  Icon(Icons.psychology_rounded, size: 40, color: context.neonCyan),
+                  const SizedBox(height: 10),
+                  Text('DESIGNED BY NEURAL NETWORKS', style: TextStyle(color: context.textD, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 60),
+        ],
+      ),
+    );
+  }
+
+  Widget _cyberSection(BuildContext context, String title, List<Widget> items) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Top bar ──────────────────────────────────
+        Padding(padding: const EdgeInsets.only(left: 8, bottom: 12), child: Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: context.neonBlue, letterSpacing: 2))),
         Container(
-          padding: EdgeInsets.only(
-            top: showBackButton ? MediaQuery.of(context).padding.top : 0,
-            left: 4,
-            right: 4,
-          ),
           decoration: BoxDecoration(
-            color: context.bg,
-            border: Border(
-              bottom: BorderSide(color: context.border, width: 0.5),
-            ),
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.neonBlue.withOpacity(0.1)),
           ),
-          child: SizedBox(
-            height: 52,
-            child: Row(
-              children: [
-                if (showBackButton)
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_rounded, color: context.text),
-                    onPressed: () => Get.back(),
-                  ),
-                if (!showBackButton) const SizedBox(width: 16),
-                Text(
-                  'Settings',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: context.text,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: Column(children: items),
         ),
-
-        // ── Body ─────────────────────────────────────
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              // ── Appearance ────────────────────────────────
-              _sectionHeader(context, 'Appearance'),
-              const SizedBox(height: 12),
-              _card(
-                context,
-                child: Obx(
-                  () => SwitchListTile(
-                    title: Text(
-                      'Dark Mode',
-                      style: TextStyle(color: context.text, fontSize: 14),
-                    ),
-                    subtitle: Text(
-                      themeCtrl.isDarkMode
-                          ? 'Using dark theme'
-                          : 'Using light theme',
-                      style: TextStyle(color: context.textD, fontSize: 12),
-                    ),
-                    secondary: Icon(
-                      themeCtrl.isDarkMode
-                          ? Icons.dark_mode_rounded
-                          : Icons.light_mode_rounded,
-                      color: context.textM,
-                    ),
-                    value: themeCtrl.isDarkMode,
-                    onChanged: (val) => themeCtrl.toggleTheme(),
-                    activeThumbColor: AppColors.accent,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── System Prompt ─────────────────────────────
-              _sectionHeader(context, 'Global System Prompt'),
-              const SizedBox(height: 8),
-              Text(
-                'Applied to all new chats. Existing chats keep their own prompt.',
-                style: TextStyle(fontSize: 12, color: context.textD),
-              ),
-              const SizedBox(height: 12),
-              Obx(
-                () => TextField(
-                  controller:
-                      TextEditingController(text: chatCtrl.systemPrompt.value)
-                        ..selection = TextSelection.fromPosition(
-                          TextPosition(
-                            offset: chatCtrl.systemPrompt.value.length,
-                          ),
-                        ),
-                  maxLines: 4,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: context.text,
-                    height: 1.5,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. You are a helpful assistant...',
-                    hintStyle: TextStyle(color: context.textD),
-                    filled: true,
-                    fillColor: context.bgInput,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: context.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: context.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.accent),
-                    ),
-                  ),
-                  onChanged: (v) => chatCtrl.setGlobalSystemPrompt(v),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () {
-                    chatCtrl.clearGlobalSystemPrompt();
-                    Get.snackbar(
-                      'Cleared',
-                      'Global system prompt removed.',
-                      snackPosition: SnackPosition.BOTTOM,
-                    );
-                  },
-                  icon: const Icon(Icons.clear_rounded, size: 16),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.red),
-                  label: const Text(
-                    'Clear Prompt',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Temperature ───────────────────────────────
-              _sectionHeader(context, 'Temperature'),
-              const SizedBox(height: 12),
-              _card(
-                context,
-                child: Obx(
-                  () => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.thermostat_rounded,
-                          size: 20,
-                          color: context.textM,
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: chatCtrl.temperature.value,
-                            min: 0.0,
-                            max: 2.0,
-                            divisions: 20,
-                            activeColor: AppColors.accent,
-                            inactiveColor: context.border,
-                            label: chatCtrl.temperature.value.toStringAsFixed(
-                              1,
-                            ),
-                            onChanged: (v) => chatCtrl.updateTemperature(v),
-                          ),
-                        ),
-                        Container(
-                          width: 44,
-                          alignment: Alignment.center,
-                          child: Text(
-                            chatCtrl.temperature.value.toStringAsFixed(1),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: context.text,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Local API Server ──────────────────────────
-              _sectionHeader(context, 'Local API Server'),
-              const SizedBox(height: 8),
-              Text(
-                'Expose the loaded model to OpenAI-compatible local clients.',
-                style: TextStyle(fontSize: 12, color: context.textD),
-              ),
-              const SizedBox(height: 12),
-              _card(
-                context,
-                child: Obx(() {
-                  final running = apiServer.isRunning.value;
-                  final starting = apiServer.isStarting.value;
-                  final ready = apiServer.hasLoadedModel;
-                  final busy = apiServer.isBusy;
-                  final statusText = starting
-                      ? 'Starting'
-                      : running
-                      ? ready
-                            ? busy
-                                  ? 'Busy'
-                                  : 'Running'
-                            : 'No model loaded'
-                      : 'Stopped';
-                  final statusColor = running && ready
-                      ? AppColors.green
-                      : running
-                      ? AppColors.orange
-                      : context.textD;
-
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SwitchListTile(
-                          title: Text(
-                            'Local API server',
-                            style: TextStyle(color: context.text, fontSize: 14),
-                          ),
-                          subtitle: Text(
-                            'OpenAI base URL: ${apiServer.baseUrl}',
-                            style: TextStyle(
-                              color: context.textD,
-                              fontSize: 12,
-                            ),
-                          ),
-                          secondary: Icon(
-                            Icons.api_rounded,
-                            color: running ? AppColors.accent : context.textM,
-                          ),
-                          value: running,
-                          onChanged: starting
-                              ? null
-                              : (enabled) async {
-                                  try {
-                                    if (enabled) {
-                                      await apiServer.start();
-                                    } else {
-                                      await apiServer.stop();
-                                    }
-                                  } catch (e) {
-                                    Get.snackbar(
-                                      'Local API Error',
-                                      e.toString(),
-                                      snackPosition: SnackPosition.BOTTOM,
-                                    );
-                                  }
-                                },
-                          activeThumbColor: AppColors.accent,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            _statusChip(context, statusText, statusColor),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: SelectableText(
-                                apiServer.baseUrl,
-                                style: TextStyle(
-                                  color: context.text,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          key: ValueKey('api-port-${apiServer.port.value}'),
-                          initialValue: apiServer.port.value.toString(),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: context.text, fontSize: 13),
-                          decoration: InputDecoration(
-                            labelText: 'Port',
-                            helperText:
-                                'Use API key "local" in clients that require one.',
-                            labelStyle: TextStyle(color: context.textM),
-                            helperStyle: TextStyle(
-                              color: context.textD,
-                              fontSize: 11,
-                            ),
-                            filled: true,
-                            fillColor: context.bgInput,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: context.border),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: context.border),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: AppColors.accent,
-                              ),
-                            ),
-                          ),
-                          onFieldSubmitted: (value) async {
-                            final parsed = int.tryParse(value.trim());
-                            if (parsed == null ||
-                                parsed < 1024 ||
-                                parsed > 65535) {
-                              Get.snackbar(
-                                'Invalid Port',
-                                'Choose a port from 1024 to 65535.',
-                                snackPosition: SnackPosition.BOTTOM,
-                              );
-                              return;
-                            }
-                            try {
-                              await apiServer.setPort(parsed);
-                              Get.snackbar(
-                                'Local API Updated',
-                                'Base URL is ${apiServer.baseUrl}',
-                                snackPosition: SnackPosition.BOTTOM,
-                              );
-                            } catch (e) {
-                              Get.snackbar(
-                                'Local API Error',
-                                e.toString(),
-                                snackPosition: SnackPosition.BOTTOM,
-                              );
-                            }
-                          },
-                        ),
-                        if (apiServer.errorMessage.value.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            apiServer.errorMessage.value,
-                            style: const TextStyle(
-                              color: AppColors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Storage ───────────────────────────────────
-              _sectionHeader(context, 'Storage'),
-              const SizedBox(height: 12),
-              _card(
-                context,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.folder_outlined,
-                        size: 20,
-                        color: context.textM,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          modelManager.modelsDir,
-                          style: TextStyle(fontSize: 13, color: context.text),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Danger Zone ───────────────────────────────
-              _sectionHeader(context, 'Danger Zone'),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.delete_forever_rounded, size: 18),
-                label: const Text(
-                  'Delete All Chats',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                onPressed: () {
-                  Get.dialog(
-                    AlertDialog(
-                      backgroundColor: context.bgPanel,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      title: Text(
-                        'Delete All Chats?',
-                        style: TextStyle(color: context.text),
-                      ),
-                      content: Text(
-                        'This cannot be undone.',
-                        style: TextStyle(color: context.textM),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Get.back(),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(color: context.textD),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            chatCtrl.chats.clear();
-                            chatCtrl.activeChatId.value = null;
-                            Get.back();
-                            Get.snackbar(
-                              'Done',
-                              'All chats deleted.',
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.red,
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Delete All',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.red,
-                  side: const BorderSide(color: AppColors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ── About ─────────────────────────────────────
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      'Uncensored Local AI v1.0.0',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: context.textM,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Powered by llamadart + llama.cpp',
-                      style: TextStyle(fontSize: 11, color: context.textD),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
+        const SizedBox(height: 30),
       ],
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: context.textM,
-        letterSpacing: 0.3,
+  Widget _cyberTile(BuildContext context, IconData icon, Color color, String title, {String? subtitle, Widget? trailing, VoidCallback? onTap}) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.2))),
+        child: Icon(icon, color: color, size: 20)
       ),
-    );
-  }
-
-  Widget _card(BuildContext context, {required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.bgPanel,
-        border: Border.all(color: context.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _statusChip(BuildContext context, String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.text)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(fontSize: 11, color: context.textD)) : null,
+      trailing: trailing,
     );
   }
 }

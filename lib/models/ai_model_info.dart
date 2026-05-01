@@ -1,58 +1,39 @@
-/// Represents a downloadable/loadable AI model from the catalog.
 class AiModelInfo {
-  final String id;
-  final String name;
-  final String filename;
-  final String url;
+  final String name, filename, downloadUrl, provider, description;
   final double sizeGb;
   final int minRamGb;
-  final String label;        // UNCENSORED / STANDARD / CUSTOM
-  final String badge;        // RECOMMENDED, HERETIC, etc.
-  final String systemPrompt;
-  final bool recommended;
+  final bool isUncensored;
 
   const AiModelInfo({
-    required this.id,
     required this.name,
     required this.filename,
-    required this.url,
+    required this.downloadUrl,
     required this.sizeGb,
     required this.minRamGb,
-    required this.label,
-    required this.badge,
-    required this.systemPrompt,
-    this.recommended = false,
+    required this.provider,
+    required this.description,
+    this.isUncensored = false,
   });
 
-  factory AiModelInfo.fromJson(Map<String, dynamic> json) {
-    return AiModelInfo(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      filename: json['filename'] as String,
-      url: json['url'] as String,
-      sizeGb: (json['sizeGb'] as num).toDouble(),
-      minRamGb: (json['minRamGb'] as num).toInt(),
-      label: json['label'] as String? ?? 'STANDARD',
-      badge: json['badge'] as String? ?? '',
-      systemPrompt: json['systemPrompt'] as String? ?? '',
-      recommended: json['recommended'] as bool? ?? false,
-    );
-  }
+  factory AiModelInfo.fromJson(Map<String, dynamic> json) => AiModelInfo(
+    name: json['name'] ?? '',
+    filename: json['filename'] ?? '',
+    downloadUrl: json['downloadUrl'] ?? '',
+    sizeGb: (json['sizeGb'] ?? 0).toDouble(),
+    minRamGb: json['minRamGb'] ?? 4,
+    provider: json['provider'] ?? 'Unknown',
+    description: json['description'] ?? '',
+    isUncensored: json['isUncensored'] ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'filename': filename,
-        'url': url,
-        'sizeGb': sizeGb,
-        'minRamGb': minRamGb,
-        'label': label,
-        'badge': badge,
-        'systemPrompt': systemPrompt,
-        'recommended': recommended,
-      };
-
-  bool get isUncensored => label == 'UNCENSORED';
-  bool get isStandard => label == 'STANDARD';
-  bool get isCustom => label == 'CUSTOM';
+    'name': name,
+    'filename': filename,
+    'downloadUrl': downloadUrl,
+    'sizeGb': sizeGb,
+    'minRamGb': minRamGb,
+    'provider': provider,
+    'description': description,
+    'isUncensored': isUncensored,
+  };
 }

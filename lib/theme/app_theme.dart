@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -11,52 +12,17 @@ class AppTheme {
       primaryColor: AppColors.accent,
       colorScheme: const ColorScheme.dark(
         primary: AppColors.accent,
-        secondary: AppColors.accentHi,
-        surface: AppColors.darkBgPanel,
+        secondary: AppColors.neonPurple,
+        surface: AppColors.darkSidebar,
         error: AppColors.red,
       ),
-      textTheme: ThemeData.dark().textTheme.apply(
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).apply(
         bodyColor: AppColors.darkText,
         displayColor: AppColors.darkText,
-        fontFamily: 'Roboto',
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.darkBgPanel,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.darkText,
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.darkBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.darkBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.accent),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        hintStyle: const TextStyle(color: AppColors.darkTextD, fontSize: 14),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-      ),
-      dividerColor: AppColors.darkBorder,
-      cardColor: AppColors.darkBgPanel,
+      dividerColor: Colors.white10,
+      cardColor: AppColors.darkSidebar,
+      useMaterial3: true,
     );
   }
 
@@ -67,53 +33,17 @@ class AppTheme {
       primaryColor: AppColors.accent,
       colorScheme: const ColorScheme.light(
         primary: AppColors.accent,
-        secondary: AppColors.accentDim,
-        surface: AppColors.lightBgPanel,
+        secondary: AppColors.neonPurple,
+        surface: AppColors.lightSidebar,
         error: AppColors.red,
       ),
-      textTheme: ThemeData.light().textTheme.apply(
+      textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).apply(
         bodyColor: AppColors.lightText,
         displayColor: AppColors.lightText,
-        fontFamily: 'Roboto',
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.lightBgPanel,
-        elevation: 0,
-        centerTitle: false,
-        iconTheme: IconThemeData(color: AppColors.lightText),
-        titleTextStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.lightText,
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.lightBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.lightBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.accent),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        hintStyle: const TextStyle(color: AppColors.lightTextD, fontSize: 14),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-      ),
-      dividerColor: AppColors.lightBorder,
-      cardColor: AppColors.lightBgPanel,
+      dividerColor: Colors.black12,
+      cardColor: AppColors.lightSidebar,
+      useMaterial3: true,
     );
   }
 }
