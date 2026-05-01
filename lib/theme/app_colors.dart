@@ -11,42 +11,54 @@ extension ThemeExt on BuildContext {
   Color get text => isDark ? AppColors.darkText : AppColors.lightText;
   Color get textM => isDark ? AppColors.darkTextM : AppColors.lightTextM;
   Color get textD => isDark ? AppColors.darkTextD : AppColors.lightTextD;
+
+  Color get neonBlue => AppColors.neonBlue;
+  Color get neonPurple => AppColors.neonPurple;
+  Color get neonCyan => AppColors.neonCyan;
 }
 
 class AppColors {
   AppColors._();
 
-  static const accent = Color(0xFF007AFF);
-  static const purple = Color(0xFF9B51E0);
-  static const green  = Color(0xFF34C759);
-  static const red    = Color(0xFFFF3B30);
-  static const orange = Color(0xFFFF9500);
+  // 2089 Neon Palette
+  static const neonBlue   = Color(0xFF00D2FF);
+  static const neonPurple = Color(0xFF9B51E0);
+  static const neonCyan   = Color(0xFF00FFF2);
+  static const neonPink   = Color(0xFFFF00CC);
+  static const accent     = Color(0xFF007AFF);
+  static const green      = Color(0xFF34C759);
+  static const red        = Color(0xFFFF3B30);
+  static const orange     = Color(0xFFFF9500);
 
-  static const darkBg      = Color(0xFF000000);
-  static const darkSidebar = Color(0xFF1C1C1E);
-  static const darkText    = Color(0xFFFFFFFF);
-  static const darkTextM   = Color(0x99EBEBF5);
-  static const darkTextD   = Color(0x4DEBEBF5);
+  // Dark Theme (Futuristic Deep Black)
+  static const darkBg      = Color(0xFF020408);
+  static const darkSidebar = Color(0xFF0A0F14);
+  static const darkText    = Color(0xFFE0E6ED);
+  static const darkTextM   = Color(0x99A0AEC0);
+  static const darkTextD   = Color(0x4D718096);
 
-  static const lightBg      = Color(0xFFF2F2F7);
+  // Light Theme (Clean Glass)
+  static const lightBg      = Color(0xFFF7FAFC);
   static const lightSidebar = Color(0xFFFFFFFF);
-  static const lightText    = Color(0xFF000000);
-  static const lightTextM   = Color(0x993C3C43);
-  static const lightTextD   = Color(0x4D3C3C43);
+  static const lightText    = Color(0xFF1A202C);
+  static const lightTextM   = Color(0x994A5568);
+  static const lightTextD   = Color(0x4DA0AEC0);
 
-  static const glassDark        = Color(0x991C1C1E);
-  static const glassLight       = Color(0x99FFFFFF);
-  static const glassBorderDark  = Color(0x33FFFFFF);
-  static const glassBorderLight = Color(0x33000000);
+  // Neural Glassmorphism
+  static const glassDark        = Color(0xCC0A0F14);
+  static const glassLight       = Color(0xCCFFFFFF);
+  static const glassBorderDark  = Color(0x1A00D2FF);
+  static const glassBorderLight = Color(0x1A000000);
 
-  static const siriGradient = LinearGradient(
-    colors: [Color(0xFF4285F4), Color(0xFF9B51E0), Color(0xFFEB5757), Color(0xFFF2C94C)],
+  // Gradients (Neural Matrix)
+  static const neuralGradient = LinearGradient(
+    colors: [neonBlue, neonPurple, neonPink, neonCyan],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static final accentGradient = LinearGradient(
-    colors: [accent, purple],
+    colors: [accent, neonPurple],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

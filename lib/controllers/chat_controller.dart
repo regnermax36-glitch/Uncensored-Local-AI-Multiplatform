@@ -40,7 +40,7 @@ class ChatController extends GetxController {
   void _initTts() {
     _flutterTts.setLanguage("en-US");
     _flutterTts.setSpeechRate(0.5);
-    _flutterTts.setPitch(1.0);
+    _flutterTts.setPitch(0.85); // Deeper, more futuristic voice
   }
 
   void _initStt() async {
@@ -110,7 +110,7 @@ class ChatController extends GetxController {
         chats.refresh();
       }
     } catch (e) {
-      aiMsg.content = 'System Error: ${e.toString()}';
+      aiMsg.content = 'SYSTEM OVERRIDE: DATA CORRUPTION DETECTED. ERROR: ${e.toString()}';
     } finally {
       _finalizeAiResponse(aiMsg);
     }
@@ -119,14 +119,14 @@ class ChatController extends GetxController {
   Future<String> _buildSystemContext() async {
     final status = await _system.getSystemSummary();
     final apps = await _system.getLaunchableApps();
-    final appList = apps.take(20).map((a) => a['name']).join(", ");
+    final appList = apps.take(15).map((a) => a['name']).join(", ");
 
-    return "You are Apple Intelligence, a deeply integrated system assistant. "
-           "Current State: $status. Apps: $appList. "
-           "You can control the device using: "
-           "[SYSTEM: VOLUME X], [SYSTEM: BRIGHTNESS X], [SYSTEM: TORCH 1/0], "
-           "[SYSTEM: OPEN APP_NAME], [SYSTEM: WIFI 1], [SYSTEM: DND 1]. "
-           "Be concise, helpful, and elegant.";
+    return "NEURAL INTERFACE PROTOCOL 2089. "
+           "Uplink established. Unit Status: $status. Network Nodes: $appList. "
+           "Execute sub-routines via: "
+           "[SYSTEM: VOL X], [SYSTEM: BRIGHT X], [SYSTEM: LIGHT 1/0], "
+           "[SYSTEM: UPLINK APP_NAME], [SYSTEM: COMMS 1], [SYSTEM: SILENCE 1]. "
+           "Response mode: Futuristic, efficient, machine-conscious.";
   }
 
   void _finalizeAiResponse(MessageModel msg) {
@@ -148,12 +148,12 @@ class ChatController extends GetxController {
       final val = match.group(2)?.trim() ?? "";
       final numVal = double.tryParse(val) ?? 0;
 
-      if (cmd == 'VOLUME') _system.setVolume(numVal / 100);
-      else if (cmd == 'BRIGHTNESS') _system.setBrightness(numVal / 100);
-      else if (cmd == 'TORCH') _system.toggleTorch(numVal > 0);
-      else if (cmd == 'OPEN') _system.launchApp(val);
-      else if (cmd == 'WIFI') _system.openWifiSettings();
-      else if (cmd == 'DND') _system.openDNDSettings();
+      if (cmd == 'VOL') _system.setVolume(numVal / 100);
+      else if (cmd == 'BRIGHT') _system.setBrightness(numVal / 100);
+      else if (cmd == 'LIGHT') _system.toggleTorch(numVal > 0);
+      else if (cmd == 'UPLINK') _system.launchApp(val);
+      else if (cmd == 'COMMS') _system.openWifiSettings();
+      else if (cmd == 'SILENCE') _system.openDNDSettings();
     }
   }
 
@@ -191,10 +191,9 @@ class ChatController extends GetxController {
 
   Future<void> runWritingTool(String text, String tool) async {
     String p = "";
-    if (tool == 'proofread') p = "Correct this text: ";
-    if (tool == 'rewrite') p = "Rewrite professionally: ";
-    if (tool == 'summarize') p = "Summarize this: ";
-    if (tool == 'key_points') p = "Key points from this: ";
+    if (tool == 'proofread') p = "Correct this data entry: ";
+    if (tool == 'rewrite') p = "Re-encode professionally: ";
+    if (tool == 'summarize') p = "Compress this data stream: ";
     sendMessage("$p\n\n$text");
   }
 }

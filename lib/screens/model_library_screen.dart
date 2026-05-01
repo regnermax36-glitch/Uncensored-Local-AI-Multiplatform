@@ -16,19 +16,24 @@ class ModelLibraryScreen extends StatelessWidget {
     final manager = Get.find<ModelManager>();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           Row(
             children: [
-              Text('Models', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1, color: context.text)),
+              Text('NEURAL UNITS', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 4, color: context.text)),
               const Spacer(),
-              IconButton(icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.accent), onPressed: () => ctrl.importModelFromFile()),
+              IconButton(
+                icon: Icon(Icons.add_link_rounded, color: context.neonCyan),
+                onPressed: () => ctrl.importModelFromFile()
+              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          Text('CORE DATA STORAGE // UPLINK READY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: context.textD, letterSpacing: 2)),
+          const SizedBox(height: 20),
           Expanded(
             child: Obx(() {
               final models = ctrl.catalog;
@@ -54,7 +59,7 @@ class ModelLibraryScreen extends StatelessWidget {
                     onRemoveCustom: () => ctrl.deleteCustomModel(m),
                     onCancelLoad: () => ctrl.cancelLoadModel(),
                     onUnload: () => ctrl.unloadCurrentModel(),
-                  ).animate().fadeIn(delay: (i * 100).ms).slideX(begin: 0.1, end: 0);
+                  ).animate().fadeIn(delay: (i * 100).ms).slideY(begin: 0.2, end: 0, curve: Curves.easeOutBack);
                 },
               );
             }),

@@ -11,7 +11,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _init() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 4));
     Get.offAllNamed(AppRoutes.home);
   }
 
@@ -31,31 +31,62 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: AppColors.purple.withOpacity(0.5), blurRadius: 40, spreadRadius: 10)
-                ],
-              ),
-              child: Image.network(
-                'https://www.apple.com/v/apple-intelligence/a/images/overview/hero/apple_intelligence_icon__f9v7p6x8r1yq_large.png',
-                width: 150,
-                height: 150,
-              ),
-            ).animate().scale(duration: 1200.ms, curve: Curves.elasticOut).fadeIn(),
-            const SizedBox(height: 40),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Digital Aura
+                Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.neonCyan.withOpacity(0.2),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ).animate(onPlay: (c) => c.repeat()).scale(duration: 2.ms * 1000, curve: Curves.easeInOut).fadeIn(),
+
+                // Neural Core
+                Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.neonCyan.withOpacity(0.1)),
+                    boxShadow: [
+                      BoxShadow(color: AppColors.neonPurple.withOpacity(0.4), blurRadius: 60, spreadRadius: 10)
+                    ],
+                  ),
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => AppColors.neuralGradient.createShader(bounds),
+                    child: const Icon(Icons.psychology_rounded, size: 160, color: Colors.white),
+                  ),
+                ).animate().scale(duration: 1.ms * 1000, curve: Curves.elasticOut).shimmer(duration: 3.ms * 1000),
+              ],
+            ),
+            const SizedBox(height: 60),
             Text(
-              'Apple Intelligence',
+              'NEURAL INTERFACE',
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -1,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 8,
                 color: Colors.white,
-                shadows: [Shadow(color: Colors.white24, blurRadius: 20)]
+                shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)]
               ),
-            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
+            ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.5, end: 0),
+            const SizedBox(height: 12),
+            Text(
+              'YEAR 2089 // INITIALIZING UPLINK',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 3,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ).animate().fadeIn(delay: 1.ms * 1000),
           ],
         ),
       ),

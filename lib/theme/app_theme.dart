@@ -12,7 +12,7 @@ class AppTheme {
       primaryColor: AppColors.accent,
       colorScheme: const ColorScheme.dark(
         primary: AppColors.accent,
-        secondary: AppColors.purple,
+        secondary: AppColors.neonPurple,
         surface: AppColors.darkSidebar,
         error: AppColors.red,
       ),
@@ -33,7 +33,7 @@ class AppTheme {
       primaryColor: AppColors.accent,
       colorScheme: const ColorScheme.light(
         primary: AppColors.accent,
-        secondary: AppColors.purple,
+        secondary: AppColors.neonPurple,
         surface: AppColors.lightSidebar,
         error: AppColors.red,
       ),
