@@ -47,6 +47,8 @@ dependencies:
   android_intent_plus: ^5.0.2
   installed_apps: ^1.1.0
   manual_speech_to_text: ^1.0.4
+  record: ^6.2.1
+  audioplayers: ^6.7.1
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../controllers/chat_controller.dart';
@@ -30,14 +31,17 @@ class _HomeScreenState extends State<HomeScreen> {
   final _wakeWord = Get.find<WakeWordService>();
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
+  static const _channel = MethodChannel('com.portableai.assistant');
 
   int _mobileTabIndex = 0;
   final _showOverlay = false.obs;
+  final _isAssistantMode = false.obs;
 
   @override
   void initState() {
     super.initState();
     _initWakeWord();
+    _initMethodChannel();
 
     ever(_chatCtrl.isListening, (bool listening) {
       if (listening) _showOverlay.value = true;
@@ -46,6 +50,25 @@ class _HomeScreenState extends State<HomeScreen> {
     ever(_chatCtrl.lastWords, (String words) {
       if (_chatCtrl.isListening.value) _msgController.text = words;
     });
+  }
+
+  void _initMethodChannel() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'showAssistant') {
+        _isAssistantMode.value = true;
+        _showOverlay.value = true;
+        _chatCtrl.startListening();
+      }
+    });
+  }
+
+  void _dismissAssistant() {
+    _showOverlay.value = false;
+    _chatCtrl.stopListening();
+    if (_isAssistantMode.value) {
+      _channel.invokeMethod('moveToBack');
+      _isAssistantMode.value = false;
+    }
   }
 
   void _initWakeWord() async {
@@ -72,49 +95,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() => Stack(
-      children: [
-        // 2089 Background Matrix
-        Container(color: context.isDark ? AppColors.darkBg : AppColors.lightBg),
-
-        FluidGlowPainter(
-          isVisible: _chatCtrl.isGenerating.value || _chatCtrl.isListening.value,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            extendBody: true,
-            extendBodyBehindAppBar: true,
-            drawer: Drawer(
-              backgroundColor: Colors.transparent,
-              width: MediaQuery.of(context).size.width * 0.85,
-              child: ChatSidebar(
-                onNewChat: () { _chatCtrl.newChat(); Get.back(); },
-                onSelectChat: (id) { _chatCtrl.switchChat(id); Get.back(); },
-                onDeleteChat: (id) => _chatCtrl.deleteChat(id),
+    return Obx(() {
+      if (_isAssistantMode.value) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              AppleIntelligenceOverlay(
+                isVisible: _showOverlay.value,
+                onDismiss: _dismissAssistant,
               ),
-            ),
-            body: SafeArea(
-              child: IndexedStack(
-                index: _mobileTabIndex,
-                children: [
-                  _buildNeuralChatTab(),
-                  const ModelLibraryScreen(embedded: true),
-                  const SettingsScreen(embedded: true),
-                ],
-              ),
-            ),
-            bottomNavigationBar: _buildFuturisticNav(),
+            ],
           ),
-        ),
+        );
+      }
 
-        AppleIntelligenceOverlay(
-          isVisible: _showOverlay.value,
-          onDismiss: () {
-            _showOverlay.value = false;
-            _chatCtrl.stopListening();
-          },
-        ),
-      ],
-    ));
+      return Stack(
+        children: [
+          // 2089 Background Matrix
+          Container(color: context.isDark ? AppColors.darkBg : AppColors.lightBg),
+
+          FluidGlowPainter(
+            isVisible: _chatCtrl.isGenerating.value || _chatCtrl.isListening.value,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              extendBody: true,
+              extendBodyBehindAppBar: true,
+              drawer: Drawer(
+                backgroundColor: Colors.transparent,
+                width: MediaQuery.of(context).size.width * 0.85,
+                child: ChatSidebar(
+                  onNewChat: () { _chatCtrl.newChat(); Get.back(); },
+                  onSelectChat: (id) { _chatCtrl.switchChat(id); Get.back(); },
+                  onDeleteChat: (id) => _chatCtrl.deleteChat(id),
+                ),
+              ),
+              body: SafeArea(
+                child: IndexedStack(
+                  index: _mobileTabIndex,
+                  children: [
+                    _buildNeuralChatTab(),
+                    const ModelLibraryScreen(embedded: true),
+                    const SettingsScreen(embedded: true),
+                  ],
+                ),
+              ),
+              bottomNavigationBar: _buildFuturisticNav(),
+            ),
+          ),
+
+          AppleIntelligenceOverlay(
+            isVisible: _showOverlay.value,
+            onDismiss: _dismissAssistant,
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildNeuralChatTab() {
