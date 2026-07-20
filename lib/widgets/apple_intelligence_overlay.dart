@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:get/get.dart';
-import 'fluid_glow_painter.dart';
 
 class AppleIntelligenceOverlay extends StatefulWidget {
   final bool isVisible;
@@ -18,12 +17,12 @@ class AppleIntelligenceOverlay extends StatefulWidget {
 }
 
 class _AppleIntelligenceOverlayState extends State<AppleIntelligenceOverlay> with SingleTickerProviderStateMixin {
-  late AnimationController _neuralController;
+  late AnimationController _siriController;
 
   @override
   void initState() {
     super.initState();
-    _neuralController = AnimationController(
+    _siriController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
@@ -31,164 +30,111 @@ class _AppleIntelligenceOverlayState extends State<AppleIntelligenceOverlay> wit
 
   @override
   void dispose() {
-    _neuralController.dispose();
+    _siriController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 800),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 1.2, end: 1.0).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack)),
-            child: child,
-          ),
-        );
-      },
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutCirc,
+      switchOutCurve: Curves.easeInCirc,
       child: widget.isVisible
         ? Material(
-            key: const ValueKey('neural_overlay_2089'),
+            key: const ValueKey('siri_ai_overlay'),
             color: Colors.transparent,
-            child: Stack(
-              children: [
-                // Neural Void Background
-                GestureDetector(
-                  onTap: widget.onDismiss,
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          gradient: RadialGradient(
-                            center: Alignment.center,
-                            radius: 1.5,
-                            colors: [
-                              const Color(0xFF00D2FF).withOpacity(0.1),
-                              Colors.black.withOpacity(0.8),
-                            ],
-                          ),
-                        ),
+            child: GestureDetector(
+              onTap: widget.onDismiss,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Full-screen edge glow
+                  AnimatedBuilder(
+                    animation: _siriController,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        painter: _SiriEdgeGlowPainter(_siriController.value),
+                        size: Size.infinite,
+                      );
+                    }
+                  ),
+
+                  // Bottom Orb
+                  Positioned(
+                    bottom: 60,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: AnimatedBuilder(
+                        animation: _siriController,
+                        builder: (context, child) {
+                          return _buildSiriOrb();
+                        },
                       ),
                     ),
                   ),
-                ),
 
-                // Holographic UI Elements
-                Positioned.fill(
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHolographicCore(),
-                        const SizedBox(height: 60),
-                        _buildTypewriterText('SYSTEM: NEURAL LINK ACTIVE'),
-                        const SizedBox(height: 16),
-                        _buildSubStatus('SYNAPSE CONNECTED // 2089-WWDC'),
-                      ],
-                    ),
+                  // Close button
+                  Positioned(
+                    top: 60,
+                    right: 30,
+                    child: _holographicButton(Icons.close_rounded, widget.onDismiss),
                   ),
-                ),
-
-                // Corner Control
-                Positioned(
-                  top: 60,
-                  right: 30,
-                  child: _holographicButton(Icons.close_rounded, widget.onDismiss),
-                ),
-              ],
+                ],
+              ),
             ),
           )
         : const SizedBox.shrink(),
     );
   }
 
-  Widget _buildHolographicCore() {
-    return AnimatedBuilder(
-      animation: _neuralController,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Rotating Outer Rings
-            Transform.rotate(
-              angle: _neuralController.value * 2 * 3.14159,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF00FFF2).withOpacity(0.2), width: 1),
-                ),
-              ),
-            ),
-            Transform.rotate(
-              angle: -_neuralController.value * 4 * 3.14159,
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF9B51E0).withOpacity(0.3), width: 2, strokeAlign: BorderSide.strokeAlignOutside),
-                ),
-              ),
-            ),
-            // Central Neural Core
-            Container(
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00D2FF).withOpacity(0.4),
-                    blurRadius: 60,
-                    spreadRadius: 10,
-                  )
-                ],
-              ),
-              child: ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFF00D2FF), Color(0xFF9B51E0)],
-                ).createShader(bounds),
-                child: const Icon(Icons.psychology_rounded, size: 100, color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildTypewriterText(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        letterSpacing: 4,
-        fontFamily: 'monospace',
-      ),
-    );
-  }
-
-  Widget _buildSubStatus(String text) {
+  Widget _buildSiriOrb() {
+    final t = _siriController.value;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      width: 120,
+      height: 120,
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.white24),
-        borderRadius: BorderRadius.circular(4),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00D2FF).withOpacity(0.4),
+            blurRadius: 50,
+            spreadRadius: 10,
+          ),
+          BoxShadow(
+            color: const Color(0xFFFF00CC).withOpacity(0.3),
+            blurRadius: 40,
+            spreadRadius: 5,
+          ),
+        ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: const Color(0xFF00FFF2).withOpacity(0.8),
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 2,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: SweepGradient(
+                center: Alignment.center,
+                colors: const [
+                  Color(0xFF00D2FF), // Neon Blue
+                  Color(0xFFFF00CC), // Neon Pink
+                  Color(0xFF9B51E0), // Neon Purple
+                  Color(0xFF00FFF2), // Neon Cyan
+                  Color(0xFF00D2FF), // Loop back
+                ],
+                transform: GradientRotation(t * 2 * 3.14159),
+              ),
+            ),
+            child: Container(
+              margin: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black45, // Inner core
+              ),
+              child: const Icon(Icons.mic_none_rounded, color: Colors.white, size: 40),
+            ),
+          ),
         ),
       ),
     );
@@ -207,5 +153,49 @@ class _AppleIntelligenceOverlayState extends State<AppleIntelligenceOverlay> wit
         child: Icon(icon, color: Colors.white70, size: 28),
       ),
     );
+  }
+}
+
+class _SiriEdgeGlowPainter extends CustomPainter {
+  final double animationValue;
+
+  _SiriEdgeGlowPainter(this.animationValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(40));
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 24.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
+
+    paint.shader = SweepGradient(
+      center: Alignment.center,
+      colors: const [
+        Color(0xFF00D2FF), // Blue
+        Color(0xFFFF00CC), // Pink
+        Color(0xFF9B51E0), // Purple
+        Color(0xFF00FFF2), // Cyan
+        Color(0xFF00D2FF), // Blue
+      ],
+      transform: GradientRotation(animationValue * 2 * 3.14159),
+    ).createShader(rect);
+
+    canvas.drawRRect(rrect, paint);
+
+    final innerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+
+    innerPaint.shader = paint.shader;
+    canvas.drawRRect(rrect, innerPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SiriEdgeGlowPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
   }
 }
